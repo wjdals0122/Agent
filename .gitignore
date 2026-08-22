@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+scripts/config.json
+
+# 파생 산출물 — 원문에서 언제든 다시 만든다 (수 GB)
+data/
+venv/
+corpus/rag/
+
+# 검증 CSV는 매 실행마다 새로 나온다(건당 1MB+). 결과는 커밋 메시지에 남긴다.
+reports/*.csv
+
+# baseline/ 은 무시하지 않는다 — 회귀 기준선 해시는 추적해야 기준선이다.
