@@ -225,58 +225,16 @@ def _unit_of(text):
 
 
 def _split_header(tree, value, g, ncol):
-    """헤더 밴드와 본문을 가른다.
+    """헤더 밴드와 본문을 가른다. 본체는 normalize/header.py.
 
-    신호 두 개를 쓴다.
-      1. 셀의 `is_header` — THEAD 이거나 USERMARK 에 배경 음영(BC0X)이
-         붙은 TD. PARSING_NOTES 에 따르면 이 신호가 periodic 에서
-         43,998개 표의 진짜 머리글을 살렸다. 검증된 자산이므로 먼저 본다.
-      2. 숫자가 나오면 본문 시작 — 1번이 없는 표를 위한 보조 신호.
-
-    헤더 밴드 판정이 틀리면 총계 정합(검증 6번 `sums`)이 깨진다.
-    그래서 판정 근거를 header_source 로 남긴다.
+    판정 로직은 재무제표 전용이 아니라서 밖으로 뺐다. 여기서는 밴드를
+    받아 본문만 추려 준다.
     """
-    def row_cells(r):
-        return [(c.text if c is not None else '') for c in g[r]]
-
-    def marked_header(r):
-        cs = [c for c in g[r] if c is not None]
-        return bool(cs) and all(getattr(c, 'is_header', False) for c in cs)
-
-    header = []
-    start = 0
-    source = None
-
-    # 1) 음영/THEAD 신호
-    r = 0
-    while r < len(g) and marked_header(r):
-        header = _merge(header, row_cells(r))
-        r += 1
-        source = 'marked'
-    if r:
-        start = r
-
-    # 2) 신호가 없으면 숫자 등장 전까지를 헤더로 본다
-    if not header:
-        for r in range(min(3, len(g))):
-            cells = row_cells(r)
-            if any(_RE_NUM.match(x.replace(' ', '')) for x in cells[1:] if x):
-                break
-            if any(cells):
-                header = _merge(header, cells)
-                start = r + 1
-                source = 'numeric_boundary'
-
-    body = [row_cells(r) for r in range(start, len(g))]
+    from normalize import header as H
+    hdr, start, source = H.detect_band(g)
+    body = [H.row_texts(g[r]) for r in range(start, len(g))]
     body = [b for b in body if any(x.strip() for x in b)]
-    return header, body, source
-
-
-def _merge(a, b):
-    if not a:
-        return list(b)
-    return [(x + ' ' + y).strip() if y and y not in x else x
-            for x, y in zip(a, b)]
+    return hdr, body, source
 
 
 def _map_columns(header, periods):

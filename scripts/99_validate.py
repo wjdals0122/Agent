@@ -370,23 +370,214 @@ def check_sums(args):
 
 
 # ══════════════════════════════════════════════════════════════════════
-# 2~5. 아직 선행 단계가 없는 검사
+# 2~5. sanitize / encoding / structure / grid — doc.json 진단값 기반
 # ══════════════════════════════════════════════════════════════════════
 
-def _not_ready(name, needs):
-    def run(args):
-        print('%s: 선행 단계 미완 — %s' % (name, needs))
+def _iter_parts(args):
+    """doc.json 을 돌며 (doc_id, doc_group, part) 를 준다."""
+    import gzip
+    files = sorted(f for f in os.listdir(P.INTERIM_DOCS_DIR)
+                   if f.endswith('.json.gz'))
+    if args.limit:
+        files = files[:args.limit]
+    for fn in files:
+        with gzip.open(os.path.join(P.INTERIM_DOCS_DIR, fn), 'rt',
+                       encoding='utf-8') as f:
+            payload = json.load(f)
+        for part in payload.get('parts') or []:
+            yield payload['doc_id'], payload.get('doc_group'), part
+
+
+def _need_docs():
+    if not os.path.isdir(P.INTERIM_DOCS_DIR):
+        print('doc.json 이 없다. scripts/03_build_docjson.py 를 먼저.')
+        return False
+    return True
+
+
+def _diag_check(args, name, fn, note=None):
+    """진단값 하나로 판정하는 검사들의 공통 뼈대."""
+    if not _need_docs():
         return 3, []
-    return run
+    rows = []
+    n = 0
+    t0 = time.time()
+    for doc_id, group, part in _iter_parts(args):
+        d = (part.get('doc') or {}).get('diagnostics')
+        if d is None:
+            rows.append(dict(doc_id=doc_id, doc_group=group,
+                             source_path=part.get('source_path'),
+                             result='FAIL', body_same='', header_same='',
+                             detail='진단값 없음 — doc.json 이 옛 버전이다'))
+            continue
+        n += 1
+        res = fn(d, group, part)
+        if res is None:
+            continue                      # 이 검사 대상이 아님
+        ok, detail = res
+        rows.append(dict(doc_id=doc_id, doc_group=group,
+                         source_path=part.get('source_path'),
+                         result='PASS' if ok else 'FAIL',
+                         body_same='', header_same='', detail=detail))
+    print('  진단값 있는 part %s개 / 판정 %s건 / %.1fs'
+          % ('{:,}'.format(n), '{:,}'.format(len(rows)), time.time() - t0))
+    if note:
+        print('  %s' % note)
+    if not rows:
+        rows.append(dict(result='PASS', doc_id='(전체)', doc_group='',
+                         source_path='', body_same='', header_same='',
+                         detail='판정 대상 0건'))
+    ok = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok == len(rows) else 2), rows
+
+
+def check_sanitize(args):
+    """이스케이프 횟수 x 4 = 문자수 증가분.
+
+    `&` 1자 -> `&amp;` 5자 이므로 치환 1회당 4자가 는다.
+
+    지금 정책(config/exception_policy.yaml)은 E1/E2 를 count_only 로
+    둔다 — 기존 관대 파서가 이미 처리하고 있어 치환을 얹으면 이중 처리가
+    되기 때문이다. 그래서 치환은 0건이고 이 검사는 아직 잡을 것이 없다.
+    그 사실을 조용히 통과시키지 않고 명시한다. 정책을 escape 로 바꾸면
+    이 검사가 그때부터 진짜로 일한다.
+    """
+    def one(d, group, part):
+        ops = d.get('escape_ops', 0)
+        cnt = d.get('escape_count', 0)
+        add = d.get('escape_chars_added', 0)
+        if not ops:
+            return None
+        want = cnt * 4
+        return (add == want,
+                '치환 %d회 -> 증가 %d자 (기대 %d자)' % (cnt, add, want))
+
+    return _diag_check(
+        args, 'sanitize', one,
+        note='정책이 count_only 라 치환 0건 — 검사는 살아 있고 대상이 없다.')
+
+
+def check_encoding(args):
+    """문서별 한글 음절 비율 >= 5%.
+
+    분모는 태그를 지운 원문이 아니라 파서가 실제로 읽어낸 본문이다.
+    1단계에서 확인: 태그 제거 정규식은 DSD 의 긴 속성 때문에 분모를
+    부풀려, 한글 음절이 198,955개나 되는 멀쩡한 13.7MB 문서를 2.84%로
+    만들었다. 그 방식이었으면 이 검사가 멀쩡한 문서를 떨어뜨린다.
+    """
+    floor = 0.05
+
+    def one(d, group, part):
+        r = d.get('hangul_ratio')
+        if r is None or not d.get('text_chars'):
+            return None
+        if r >= floor:
+            return (True, '')
+        return (False, '한글 비율 %.4f < %.2f (음절 %s / 글자 %s)'
+                % (r, floor, '{:,}'.format(d.get('hangul', 0)),
+                   '{:,}'.format(d.get('text_chars', 0))))
+    return _diag_check(args, 'encoding', one)
+
+
+def check_structure(args):
+    """//SECTION-2 개수 = 순회 도달 개수.
+
+    E4 를 지키는 장치다. 기존 순회는 descendant 축(catch-all 재귀)이라
+    LIBRARY 컨테이너를 그냥 통과한다 — 의도가 아니라 부수효과다.
+    grep -c LIBRARY parser/*.py -> major 1, holding 0, periodic 0 인데
+    실제 LIBRARY 노드는 29,339개다. 순회를 "모르는 태그는 건너뛴다"로
+    바꾸면 조용히 깨지고, 바꾼 사람은 자기가 무엇을 껐는지 알 수 없다.
+    이 검사가 그걸 잡는다.
+    """
+    def one(d, group, part):
+        if d.get('tree_scan') != 'dsd_xml':
+            return None                    # exchange 는 HTML — 대상 아님
+        a, b = d.get('section2_regex'), d.get('section2_reached')
+        if a is None or b is None:
+            return None
+        if a == b:
+            return (True, '')
+        return (False,
+                '//SECTION-2 %d개인데 순회 도달 %d개 (유실 %d, LIBRARY %d)'
+                % (a, b, a - b, d.get('library_nodes', 0)))
+    return _diag_check(args, 'structure', one)
+
+
+def _grid_one(d, group, part):
+    if d.get('tree_scan') != 'dsd_xml':
+        return None
+    n = d.get('tables_ragged')
+    if n is None:
+        return None
+    if n == 0:
+        return (True, '')
+    return (False, '표 %s개 중 ragged %d개'
+            % ('{:,}'.format(d.get('tables', 0)), n))
+
+
+def _grid_property_test():
+    """expand 가 어떤 rowspan/colspan 조합에서도 직사각형을 내는가."""
+    sys.path.insert(0, os.path.join(P.REPO_ROOT, 'src'))
+    from normalize import grid as G
+
+    class C:
+        def __init__(self, rs, cs):
+            self.rowspan, self.colspan = rs, cs
+            self.text = '%dx%d' % (rs, cs)
+
+    def make(spec):
+        return [[C(rs, cs) for rs, cs in row] for row in spec]
+
+    cases = {
+        '단순 2x3': [[(1, 1)] * 3, [(1, 1)] * 3],
+        'rowspan 23': [[(23, 1), (1, 1)]] + [[(1, 1)] for _ in range(22)],
+        '한 행에 rowspan 6개': [[(3, 1)] * 6] + [[(1, 1)] * 6] * 2,
+        'rowspan+colspan 동시': [[(2, 2), (1, 1)], [(1, 1)],
+                                 [(1, 1), (1, 1), (1, 1)]],
+        'colspan 큰 값': [[(1, 5)], [(1, 1)] * 5],
+        '빈 표': [],
+    }
+    bad = []
+    for name, spec in cases.items():
+        g, maxc = G.expand(make(spec), lambda n, r: n)
+        if g and len(set(len(r) for r in g)) > 1:
+            bad.append('%s: 열 수 %s' % (name, sorted(set(len(r) for r in g))))
+        if g and maxc != len(g[0]):
+            bad.append('%s: maxc %d != 실제 %d' % (name, maxc, len(g[0])))
+    if bad:
+        return False, '; '.join(bad)
+    return True, '%d개 조합 전부 직사각형' % len(cases)
+
+
+def check_grid(args):
+    """표별 열 수 단일값 (ragged 0).
+
+    normalize.grid.expand 가 끝에서 모든 행을 maxc 로 채우므로 정상
+    경로에서는 항상 0이어야 한다. 0이 아니면 격자를 만든 쪽이 틀린 것이고,
+    그건 rowspan 복제 오류로 이어진다.
+
+    doc.json 전수 판정에 더해 expand 자체의 성질 검사도 같이 돌린다 —
+    실측 극단값(rowspan 최대 23, 한 행에 rowspan 6개, rowspan+colspan
+    동시 3,507군데)을 만들어 넣어 본다.
+    """
+    code, rows = _diag_check(args, 'grid', _grid_one)
+    prop_ok, prop_detail = _grid_property_test()
+    rows.append(dict(doc_id='(expand 성질검사)', doc_group='', source_path='',
+                     result='PASS' if prop_ok else 'FAIL',
+                     body_same='', header_same='', detail=prop_detail))
+    print('  expand 성질검사: %s' % prop_detail)
+    ok = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok == len(rows) else 2), rows
+
 
 
 CHECKS = {
     'baseline': check_baseline,
     'docjson': check_docjson,
-    'sanitize': _not_ready('sanitize', '2단계 normalize/sanitize.py'),
-    'encoding': _not_ready('encoding', '2단계 normalize/encoding.py'),
-    'structure': _not_ready('structure', '2단계 normalize/tree.py'),
-    'grid': _not_ready('grid', '2단계 normalize/grid.py'),
+    'sanitize': check_sanitize,
+    'encoding': check_encoding,
+    'structure': check_structure,
+    'grid': check_grid,
     'sums': check_sums,
 }
 

@@ -111,10 +111,138 @@ def build_doc(raw_bytes, doc_group, file_path=None, corp_name=None,
     # 소스를 쓰되, 구조화가 필요한 문서군에서만 트리를 세운다.
     # 결과는 doc.json 안에 들어가므로 팩트 테이블은 XML 을 다시 안 본다.
     struct, sacts = _structure(mod, source, doc_group, drop_empty, doc=doc)
+
+    # 정정공시는 문서군을 가리지 않는다 — 넷 다 정정이 있다.
+    from extract import corrections as corr
+    cx = corr.build(doc, doc_group)
+    if cx:
+        struct = struct or {}
+        struct['corrections'] = cx
+        sacts.append({'rule': 'S5_corrections', 'stage': 'extract',
+                      'action': 'structure', 'count': cx['n_pairs'],
+                      'changed': cx['n_changed'],
+                      'severity': 'info' if cx['n_pairs'] else 'warn'})
     if struct:
         doc['structured'] = struct
     actions.extend(sacts)
+
+    # ── 검증 진단값 ────────────────────────────────────────────────
+    # 검증 골든셋(structure/encoding/grid)이 5.5GB 를 다시 파싱하지 않게
+    # 여기서 재 둔다. doc.json 이 축이라는 원칙을 검증에도 적용한 것이다.
+    # 코드가 바뀌면 멱등 키(소스 해시)가 무효화되어 자동으로 다시 잰다.
+    doc['diagnostics'] = _diagnose(mod, source, doc_group, actions, doc)
     return doc, actions
+
+
+_RE_HANGUL = None
+_RE_SECTION2 = None
+
+
+def _chunk_text(doc):
+    """조각에 실린 글자를 전부 이어 붙인다 — 실제로 산출물에 가는 글자."""
+    out = []
+    for c in doc.get('chunks') or []:
+        k = c[0]
+        if k == 'h':
+            out.append(c[2])
+        elif k == 'p':
+            out.append(c[1])
+        elif k == 'kv':
+            out.extend(list(c[1]))
+            if c[2]:
+                out.append(c[2])
+        elif k == 't':
+            out.extend(c[1])
+            for r in c[2]:
+                out.extend(r)
+    return ' '.join(x for x in out if x)
+
+
+def _diagnose(mod, source, doc_group, actions, doc=None):
+    """검증용 진단값. 판정하지 않고 **세기만** 한다.
+
+    exchange 는 HTML 이라 SECTION-2·LIBRARY 가 없고, 파서도 공용 트리를
+    안 쓴다(자기 _Node 를 쓴다). 그래서 트리 기반 진단은 DSD 만 재고,
+    한글 비율은 **조각에 실린 글자**로 잰다 — 산출물에 실제로 가는 글자다.
+    """
+    global _RE_HANGUL, _RE_SECTION2
+    import re
+    if _RE_HANGUL is None:
+        _RE_HANGUL = re.compile(r'[가-힣]')
+        # 태그 이름 뒤 경계는 [\s>/] 로 직접 쓴다.  를 쓰면 편집 과정에서
+        # 백스페이스 문자로 바뀌어도 에러 없이 0건이 되어 조용히 통과한다.
+        _RE_SECTION2 = re.compile(r'<\s*SECTION-2(?=[\s>/])', re.IGNORECASE)
+
+    from normalize import tree, grid as grid_mod, header as header_mod
+
+    d = {'source_chars': len(source)}
+
+    if doc_group == 'exchange':
+        body = _chunk_text(doc or {})
+        chars = len(re.sub(r'\s', '', body))
+        d['hangul'] = len(_RE_HANGUL.findall(body))
+        d['text_chars'] = chars
+        d['hangul_ratio'] = round(d['hangul'] / chars, 4) if chars else 0.0
+        d['tree_scan'] = 'n/a_html'
+        esc0 = [a for a in actions if a.get('action') == 'escape']
+        d['escape_ops'] = len(esc0)
+        d['escape_count'] = sum(a.get('count', 0) for a in esc0)
+        d['escape_chars_added'] = sum(a.get('chars_added', 0) for a in esc0)
+        return d
+
+    b = mod._TreeBuilder()
+    b.feed(source)
+    root = b.root
+    d['tree_scan'] = 'dsd_xml'
+
+    # E3 / encoding — 한글 음절 비율.
+    # 분모는 태그를 지운 문자열이 아니라 **파서가 실제로 읽어낸 본문**이다
+    # (1단계에서 확인: 태그 제거 정규식은 DSD 의 긴 속성 때문에 분모를
+    #  부풀려 멀쩡한 13.7MB 문서를 2.84%로 만든다).
+    body = tree.text(root)
+    chars = len(re.sub(r'\s', '', body))
+    d['hangul'] = len(_RE_HANGUL.findall(body))
+    d['text_chars'] = chars
+    d['hangul_ratio'] = round(d['hangul'] / chars, 4) if chars else 0.0
+
+    # E4 / structure — //SECTION-2 정규식 개수 vs 순회 도달 개수
+    if doc_group != 'exchange':
+        d['section2_regex'] = len(_RE_SECTION2.findall(source))
+        reached = 0
+        libs = 0
+        for n in tree.walk(root):
+            if n.tag == 'SECTION-2':
+                reached += 1
+            elif n.tag == 'LIBRARY':
+                libs += 1
+        d['section2_reached'] = reached
+        d['library_nodes'] = libs
+
+        # grid — 격자를 펼친 뒤 열 수가 행마다 같은가 (ragged 0)
+        ragged = 0
+        ntab = 0
+        for t in tree.walk(root):
+            if t.tag != 'TABLE':
+                continue
+            trs = [e for e in tree.own_nodes(t) if e.tag == 'TR']
+            raw = [[c for c in tr.children if c.tag in tree.CELL_TAGS]
+                   for tr in trs]
+            raw = [r for r in raw if r]
+            if not raw:
+                continue
+            ntab += 1
+            g, _ = grid_mod.expand(raw, mod._Cell)
+            if header_mod.is_ragged(g):
+                ragged += 1
+        d['tables'] = ntab
+        d['tables_ragged'] = ragged
+
+    # sanitize — 치환이 실제로 일어났으면 글자 수가 늘어야 한다
+    esc = [a for a in actions if a.get('action') == 'escape']
+    d['escape_ops'] = len(esc)
+    d['escape_count'] = sum(a.get('count', 0) for a in esc)
+    d['escape_chars_added'] = sum(a.get('chars_added', 0) for a in esc)
+    return d
 
 
 def _structure(mod, source, doc_group, drop_empty, doc=None):
