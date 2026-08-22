@@ -269,7 +269,7 @@ def _map_columns(header, periods):
 
 
 # ══════════════════════════════════════════════════════════════════════
-# 열 축 판정 + 총계 정합 (검증 골든셋 6번 `sums`)
+# 열 축 판정
 # ══════════════════════════════════════════════════════════════════════
 
 # 자본변동표는 열이 기간이 아니라 **자본 구성요소**다.
@@ -278,13 +278,32 @@ def _map_columns(header, periods):
 COLUMN_AXIS = {'BS': 'period', 'IS': 'period', 'CF': 'period',
                'EF': 'equity_component'}
 
+
+# ══════════════════════════════════════════════════════════════════════
+# 정합 검사 — 검증 골든셋 6번 `sums`
+# ══════════════════════════════════════════════════════════════════════
+#
+# 처음에는 BS 만 검사했다. 그 결과 {XBRL} 그룹 8,728개 중 1,934개(22%)만
+# 검사를 받고, IS/CF/EF 6,697개는 숫자를 뽑아 놓고 맞는지 확인하는 규칙이
+# 하나도 없었다. 그런데도 parse_confidence 에는 'high' 가 붙었다 —
+# "검사를 통과했다"가 아니라 "검사할 규칙이 없었다"인데 구분이 안 됐다.
+# 그래서 세 가지를 고쳤다.
+#
+#   1. 항등식을 **부호 있는 선형식**으로 일반화했다. BS 는 덧셈뿐이지만
+#      IS 는 뺄셈이다(매출총이익 = 수익 − 매출원가). 덧셈만 되는 틀로는
+#      손익계산서를 영영 검사할 수 없다.
+#   2. EF(자본변동표)는 열이 기간이 아니라 자본 구성요소라 행 방향으로
+#      검사한다 — 합계 열 = 나머지 구성요소 열의 합.
+#   3. 검사를 한 건도 못 받은 그룹은 'high' 를 주지 않는다.
+#      `unverified` 로 남긴다. 검사 없음과 검사 통과는 다른 사실이다.
+
 _RE_ONLY_NUM = re.compile(r'^-?[\d,]+(?:\.\d+)?$')
 
 
 def to_number(s):
     """'2,227,819,930' → 2227819930. 숫자가 아니면 None.
 
-    괄호 음수 '(1,234)' 도 받는다 — 재무제표에서 흔하다.
+    괄호 음수 '(1,234)' 도 받는다 — 재무제표에서 음수 표기의 기본이다.
     """
     if s is None:
         return None
@@ -304,125 +323,224 @@ def to_number(s):
     return int(v) if v == int(v) else v
 
 
-# 총계 = 필수 부분합 + (있으면) 선택 부분합. 라벨은 공백을 지우고 비교한다.
-#
-# ★ 명세가 "검증됨"이라고 준 규칙 하나가 이 코퍼스에서 틀렸다.
-#   명세: 자산총계 = 유동자산 + 비유동자산
-#   실측: CJ제일제당 연결 재무상태표에서 27,763,335 천원이 안 맞는다.
-#         원인은 파싱 오류가 아니라 **데이터**다 —
-#         '매각예정으로 분류된 처분집단의 자산' 이 유동/비유동과 나란한
-#         제3의 최상위 항목으로 따로 서 있고, 그 값이 차이와 정확히 같다.
-#         K-IFRS 에서 매각예정자산은 별도 표시 항목이다.
-#   그대로 구현하면 매각예정자산을 가진 회사가 전부 총계 불일치로 잡혀
-#   parse_confidence=low 로 강등되고 facts_* 진입이 막힌다. 멀쩡한
-#   숫자를 막는 **거짓 양성**이다. 그래서 선택 항목으로 넣는다.
-#
-# 총계 라벨도 명세와 다르다 — 실제 원문은 '자본과부채총계' 다
-# (명세는 '부채와자본총계'). 둘 다 받는다.
-SUM_CHECKS = [
-    # (총계 라벨 후보, 필수 부분합, 선택 부분합)
-    (['자산총계'], ['유동자산', '비유동자산'],
-     ['매각예정으로분류된처분집단의자산', '매각예정비유동자산',
-      '매각예정으로분류된자산']),
-    (['부채총계'], ['유동부채', '비유동부채'],
-     ['매각예정으로분류된처분집단에포함된부채', '매각예정부채']),
-    (['자본총계'], ['지배기업의소유주에게귀속되는자본', '비지배지분'], []),
-    (['자본과부채총계', '부채와자본총계'], ['부채총계', '자본총계'], []),
-]
-
-
 def _norm_label(s):
     return re.sub(r'\s+', '', s or '')
 
 
-def check_sums(group, tolerance=1):
-    """총계 행이 부분합과 맞는가. (결과목록, 불일치수).
+# 항등식: (이름, 좌변 라벨 후보들, [(부호, 라벨 후보들), …], [선택 항목])
+#
+# 라벨은 서식마다 조금씩 다르다(수익(매출액) / 매출액 / 영업수익). 그래서
+# 각 항을 **후보 목록**으로 둔다. 하나도 못 찾으면 그 항등식은 건너뛴다 —
+# 없는 걸 실패로 세지 않는다.
+LINEAR_CHECKS = {
+    'BS': [
+        ('자산총계', ['자산총계'],
+         [(1, ['유동자산']), (1, ['비유동자산'])],
+         ['매각예정으로분류된처분집단의자산', '매각예정비유동자산',
+          '매각예정으로분류된자산']),
+        ('부채총계', ['부채총계'],
+         [(1, ['유동부채']), (1, ['비유동부채'])],
+         ['매각예정으로분류된처분집단에포함된부채', '매각예정부채']),
+        ('자본총계', ['자본총계'],
+         [(1, ['지배기업의소유주에게귀속되는자본', '지배기업소유주지분']),
+          (1, ['비지배지분'])], []),
+        ('자본과부채총계', ['자본과부채총계', '부채와자본총계', '부채및자본총계'],
+         [(1, ['부채총계']), (1, ['자본총계'])], []),
+    ],
+    'IS': [
+        ('매출총이익', ['매출총이익'],
+         [(1, ['수익(매출액)', '매출액', '영업수익', '수익']),
+          (-1, ['매출원가'])], []),
+        ('영업이익', ['영업이익', '영업이익(손실)'],
+         [(1, ['매출총이익']), (-1, ['판매비와관리비'])], []),
+        ('당기순이익', ['당기순이익(손실)', '당기순이익', '분기순이익(손실)',
+                        '반기순이익(손실)'],
+         [(1, ['법인세비용차감전순이익(손실)', '법인세비용차감전순이익',
+                '법인세차감전순이익(손실)']),
+          (-1, ['법인세비용'])], []),
+        ('순이익 귀속', ['당기순이익(손실)', '당기순이익', '분기순이익(손실)',
+                         '반기순이익(손실)'],
+         [(1, ['지배기업의소유주지분', '지배기업소유주지분',
+                '지배기업의소유주에게귀속되는당기순이익(손실)']),
+          (1, ['비지배지분'])], []),
+        ('총포괄손익', ['총포괄손익'],
+         [(1, ['당기순이익(손실)', '당기순이익', '분기순이익(손실)',
+                '반기순이익(손실)']),
+          (1, ['기타포괄손익'])], []),
+    ],
+    'CF': [
+        ('환율변동전 순증감', ['환율변동효과반영전현금및현금성자산의순증가(감소)'],
+         [(1, ['영업활동현금흐름']), (1, ['투자활동현금흐름']),
+          (1, ['재무활동현금흐름'])], []),
+        ('현금 순증감', ['현금및현금성자산의순증가(감소)'],
+         [(1, ['환율변동효과반영전현금및현금성자산의순증가(감소)']),
+          (1, ['현금및현금성자산에대한환율변동효과'])], []),
+        ('기말현금', ['기말현금및현금성자산'],
+         [(1, ['기초현금및현금성자산']),
+          (1, ['현금및현금성자산의순증가(감소)'])], []),
+    ],
+}
 
-    불일치는 rowspan 복제나 헤더밴드 판정 오류의 신호다. 그 표는
-    parse_confidence 를 low 로 떨어뜨리고 facts_* 진입을 막는다 —
-    **잘못된 숫자를 확신 있게 답하는 경로를 구조적으로 차단**하는 장치다.
 
-    tolerance: 반올림 차이 허용치 (단위가 천원/백만원이면 1 정도).
-    """
-    if group.get('statement') not in ('BS',):
-        return [], 0
+def _pick(by_label, candidates):
+    for c in candidates:
+        r = by_label.get(_norm_label(c))
+        if r is not None:
+            return c, r
+    return None, None
+
+
+def _linear_checks(group, tolerance=1):
+    """라벨 기반 선형 항등식. BS / IS / CF."""
+    specs = LINEAR_CHECKS.get(group.get('statement')) or []
     rows = group.get('rows') or []
     by_label = {}
     for r in rows:
-        if not r:
-            continue
-        by_label.setdefault(_norm_label(r[0]), r)
+        if r:
+            by_label.setdefault(_norm_label(r[0]), r)
 
-    results = []
-    bad = 0
+    results, bad = [], 0
     ncol = group.get('n_cols') or 0
-    for total_names, required, optional in SUM_CHECKS:
-        trow = None
-        tname = None
-        for cand in total_names:
-            trow = by_label.get(_norm_label(cand))
-            if trow is not None:
-                tname = cand
-                break
-        prows = [by_label.get(_norm_label(p)) for p in required]
-        if trow is None or any(p is None for p in prows):
+    for name, total_names, terms, optional in specs:
+        tname, trow = _pick(by_label, total_names)
+        if trow is None:
             continue
-        # 있으면 더한다. 없으면 그냥 없는 것 — 실패가 아니다.
+        picked = []
+        for sign, cands in terms:
+            lab, row = _pick(by_label, cands)
+            if row is None:
+                picked = None
+                break
+            picked.append((sign, lab, row))
+        if not picked:
+            continue
         extra = [(o, by_label[_norm_label(o)]) for o in optional
                  if _norm_label(o) in by_label]
+
         for ci in range(1, ncol):
             tv = to_number(trow[ci] if ci < len(trow) else None)
-            pvs = [to_number(p[ci] if ci < len(p) else None) for p in prows]
-            if tv is None or any(v is None for v in pvs):
+            if tv is None:
                 continue
-            evs = []
-            for _, er in extra:
-                v = to_number(er[ci] if ci < len(er) else None)
-                if v is not None:
-                    evs.append(v)
+            vals = []
+            ok_terms = True
+            for sign, lab, row in picked:
+                v = to_number(row[ci] if ci < len(row) else None)
+                if v is None:
+                    ok_terms = False
+                    break
+                vals.append(sign * v)
+            if not ok_terms:
+                continue
+            evs = [to_number(er[ci] if ci < len(er) else None)
+                   for _, er in extra]
+            evs = [v for v in evs if v is not None]
 
-            # 선택 항목을 더해야 맞는 문서와, 더하면 이중계상이 되는
-            # 문서가 **둘 다** 있다. 같은 '매각예정…' 라벨이
-            #   · CJ제일제당: 유동/비유동과 나란한 최상위 항목  → 더해야 맞음
-            #   · 다른 문서: 유동자산 **안에** 들어 있는 하위 항목 → 더하면 초과
-            # 로 쓰인다. 라벨만 보고는 어느 쪽인지 알 수 없다.
-            #
-            # 이 검사의 목적은 K-IFRS 분류를 모델링하는 게 아니라
-            # **파싱 오류(rowspan 복제·헤더밴드 오판)를 잡는 것**이다.
-            # 그래서 두 읽기 중 하나라도 맞으면 파싱은 정상으로 본다.
-            # 어느 쪽으로 맞았는지는 남긴다.
-            base = sum(pvs)
+            # 선택 항목은 더해야 맞는 문서와 더하면 이중계상인 문서가
+            # 둘 다 있다(같은 '매각예정…' 라벨이 최상위이기도, 유동자산
+            # 하위이기도 하다). 이 검사의 목적은 K-IFRS 분류가 아니라
+            # 파싱 오류 탐지이므로, 두 읽기 중 하나만 맞으면 정상으로 본다.
+            base = sum(vals)
             cands = [('required_only', base)]
             if evs:
                 cands.append(('with_optional', base + sum(evs)))
-            hit = None
-            for name, got in cands:
-                if abs(got - tv) <= tolerance:
-                    hit = (name, got)
-                    break
+            hit = next((c for c in cands if abs(c[1] - tv) <= tolerance), None)
             ok = hit is not None
             got = hit[1] if hit else cands[-1][1]
             if not ok:
                 bad += 1
             results.append({
-                'check': '%s = %s' % (tname, ' + '.join(required)),
-                'column': ci,
-                'total': tv, 'parts': pvs + evs, 'sum': got,
+                'statement': group.get('statement'),
+                'check': '%s: %s = %s' % (
+                    name, tname,
+                    ' '.join(('+ ' if s > 0 else '- ') + l
+                             for s, l, _ in picked).lstrip('+ ')),
+                'column': ci, 'total': tv, 'sum': got,
                 'diff': got - tv, 'ok': ok,
                 'reading': hit[0] if hit else None,
-                'optional_present': [o for o, _ in extra],
-                'candidates': {nm: v for nm, v in cands},
             })
     return results, bad
 
 
-def finalize(group):
-    """열 축을 판정하고 총계를 검사해 parse_confidence 를 매긴다.
+def _equity_column_checks(group, tolerance=1):
+    """자본변동표 — 합계 열 = 나머지 구성요소 열의 합 (행 방향).
 
-    low 로 떨어지는 조건
-      · 총계 불일치가 하나라도 있다 (헤더밴드/rowspan 오류 신호)
-      · 열이 기간 축인데 기간이 하나도 안 붙었다 (E7 미해결)
-      · 데이터표가 없다
+    EF 는 열이 기간이 아니라 자본 구성요소라 라벨 항등식이 안 통한다.
+    대신 헤더에 '합계' 가 붙은 열이 그 앞의 구성요소 열들의 합이어야 한다.
+    실측 구조:
+        col1..4  자본금 / 자본잉여금 / 기타자본구성요소 / 이익잉여금
+        col5     지배기업의 소유주에게 귀속되는 자본 합계   = col1..4
+        col6     비지배지분
+        col7     자본 합계                                 = col5 + col6
+    """
+    if group.get('statement') != 'EF':
+        return [], 0
+    header = group.get('header') or []
+    rows = group.get('rows') or []
+    if not header or not rows:
+        return [], 0
+
+    owner_total = None      # 지배기업 소유주 귀속 합계 열
+    grand_total = None      # 자본 합계 열
+    for i, h in enumerate(header):
+        n = _norm_label(h)
+        if not n.endswith('합계'):
+            continue
+        if '비지배' in n:
+            continue
+        if '지배기업의소유주' in n:
+            owner_total = i
+        else:
+            grand_total = i
+    nonctrl = next((i for i, h in enumerate(header)
+                    if _norm_label(h).endswith('비지배지분')), None)
+
+    results, bad = [], 0
+
+    def run(target, parts, name):
+        nonlocal bad
+        if target is None or not parts:
+            return
+        for r in rows:
+            tv = to_number(r[target] if target < len(r) else None)
+            if tv is None:
+                continue
+            vs = [to_number(r[p] if p < len(r) else None) for p in parts]
+            if any(v is None for v in vs):
+                continue
+            got = sum(vs)
+            ok = abs(got - tv) <= tolerance
+            if not ok:
+                bad += 1
+            results.append({
+                'statement': 'EF', 'check': name,
+                'row_label': (r[0] or '')[:40], 'column': target,
+                'total': tv, 'sum': got, 'diff': got - tv, 'ok': ok,
+            })
+
+    if owner_total is not None:
+        run(owner_total, [i for i in range(1, owner_total)], '지배기업 귀속 합계 = 구성요소 합')
+    if grand_total is not None and owner_total is not None and nonctrl is not None:
+        run(grand_total, [owner_total, nonctrl], '자본 합계 = 지배 + 비지배')
+    return results, bad
+
+
+def check_sums(group, tolerance=1):
+    """(결과목록, 불일치수). BS/IS/CF 는 선형 항등식, EF 는 열 합계."""
+    a, ba = _linear_checks(group, tolerance)
+    b, bb = _equity_column_checks(group, tolerance)
+    return a + b, ba + bb
+
+
+def finalize(group):
+    """정합을 확인하고 parse_confidence 를 매긴다.
+
+    low   불일치가 있다 / 데이터표가 없다 / 기간 매핑이 하나도 안 됐다
+    unverified  검사를 한 건도 못 받았다 — **통과가 아니다**
+    high  검사를 받았고 전부 맞았다
+
+    'unverified' 를 따로 둔 이유: 검사할 규칙이 없어서 아무 일도 안 일어난
+    것을 'high' 로 부르면, 확인된 숫자와 확인 안 된 숫자가 같은 등급이 된다.
+    facts_* 진입 판정은 이 등급을 보고 하므로 구분이 필요하다.
     """
     stmt = group.get('statement')
     axis = COLUMN_AXIS.get(stmt, 'period')
@@ -431,12 +549,13 @@ def finalize(group):
     sums, bad = check_sums(group)
     group['sum_checks'] = sums
     group['sum_mismatches'] = bad
+    group['sum_checked'] = len(sums)
 
     reasons = []
     if group.get('parse_confidence') == 'low':
         reasons.append(group.get('reason') or '데이터표 없음')
     if bad:
-        reasons.append('총계 불일치 %d건' % bad)
+        reasons.append('정합 불일치 %d건' % bad)
     if axis == 'period':
         cols = [c for c in (group.get('columns') or []) if c.get('header')]
         if cols and not any('period' in c for c in cols):
@@ -444,6 +563,12 @@ def finalize(group):
     if not group.get('rows'):
         reasons.append('행 없음')
 
-    group['parse_confidence'] = 'low' if reasons else 'high'
+    if reasons:
+        group['parse_confidence'] = 'low'
+    elif not sums:
+        group['parse_confidence'] = 'unverified'
+        reasons.append('적용 가능한 정합 규칙 없음')
+    else:
+        group['parse_confidence'] = 'high'
     group['confidence_reasons'] = reasons
     return group

@@ -8,6 +8,7 @@
     --structure  //SECTION-2 개수 = 순회 도달 개수
     --grid       표별 열 수 단일값 (ragged 0)
     --sums       {XBRL} 표의 총계 행 정합                 (5단계 이후)
+    --facts      구조화 팩트가 원문에 근거하는가          (환각 없음)
     --all        전부
 
 각 검사는 reports/validate_{name}.csv 를 남긴다. 요약은 진행률이 아니라
@@ -24,6 +25,7 @@ import csv
 import importlib.util
 import json
 import os
+import re
 import sys
 import time
 
@@ -294,6 +296,134 @@ def check_docjson(args):
     print('')
     print('doc.json %d개 / part %d개 / 렌더 %.1fs'
           % (n_docs, len(seen_keys), time.time() - t0))
+    ok = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok == len(rows) else 2), rows
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 8. facts — 구조화 팩트가 원문에 근거하는가 (환각 없음 최소판)
+# ══════════════════════════════════════════════════════════════════════
+
+_RE_ISO_TAIL = re.compile(
+    r'\s*\((\d{4}-\d{2}-\d{2}(?: ~ \d{4}-\d{2}-\d{2})?)\)\s*$')
+
+
+def _chunk_value_set(doc):
+    """조각에 실제로 실린 글자 조각 전부.
+
+    렌더러가 한글 날짜 뒤에 ISO 를 덧붙이므로('2024년 12월 09일 (2024-12-09)')
+    그 꼬리를 뗀 형태도 같이 넣는다. 안 그러면 멀쩡한 값이 근거 없음으로
+    잡힌다 — 실측에서 2.4% 가 전부 이 경우였다.
+    """
+    S = set()
+
+    def add(x):
+        if not x:
+            return
+        S.add(x)
+        y = _RE_ISO_TAIL.sub('', x)
+        if y != x:
+            S.add(y)
+
+    for c in doc.get('chunks') or []:
+        k = c[0]
+        if k == 'h':
+            add(c[2])
+        elif k == 'p':
+            add(c[1])
+        elif k == 'kv':
+            for q in c[1]:
+                add(q)
+            add(c[2])
+        elif k == 't':
+            for q in c[1]:
+                add(q)
+            for r in c[2]:
+                for q in r:
+                    add(q)
+    return S
+
+
+def check_facts(args):
+    """구조화 팩트의 값이 산출물(조각)에 실제로 존재하는가.
+
+    이 검사가 답하는 질문은 **"없는 값을 지어내지 않았는가"** 하나다.
+    답하지 않는 질문도 분명히 해 둔다 — 원문의 모든 값을 빠짐없이
+    담았는가(완전성)는 이 검사로 알 수 없다. 그건 별개의 작업이다.
+
+    판정은 문서 단위다. 한 문서의 팩트 중 근거를 못 찾은 것이
+    임계(기본 1%)를 넘으면 FAIL. 개별 값 하나는 정규화 차이로 어긋날 수
+    있지만, 한 문서에서 여러 건이 어긋나면 그건 추출이 틀린 것이다.
+    """
+    if not _need_docs():
+        return 3, []
+
+    floor = 0.01
+    sys.path.insert(0, os.path.join(P.REPO_ROOT, 'src'))
+    from normalize.value import is_empty_value
+
+    rows = []
+    tot = hit = skipped = 0
+    t0 = time.time()
+    for doc_id, group, part in _iter_parts(args):
+        doc = part.get('doc') or {}
+        st = doc.get('structured') or {}
+        facts = st.get('acode_facts') or []
+        if not facts:
+            continue
+        S = _chunk_value_set(doc)
+        blob = None
+        n = ok = 0
+        sample = []
+        for f in facts:
+            v = (f.get('value') or '').strip()
+            if not v:
+                continue
+            # `-` 같은 빈 값은 drop_empty 정책이 md 에서 **의도적으로**
+            # 없앤다. 조각에 없는 게 정상이므로 근거 대조 대상이 아니다.
+            # 이걸 세면 정책이 지운 것을 조작으로 오해하게 된다.
+            if is_empty_value(v):
+                skipped += 1
+                continue
+            n += 1
+            if v in S:
+                ok += 1
+                continue
+            # 셀이 합쳐져 렌더된 경우가 있다(중첩 표). 정확 일치가 아니어도
+            # 산출물 어딘가에 글자가 들어 있으면 지어낸 값은 아니다.
+            if blob is None:
+                blob = ' ␟ '.join(S)
+            if v in blob:
+                ok += 1
+                continue
+            if len(sample) < 3:
+                sample.append('%s=%s' % (f.get('acode'), v[:30]))
+        if not n:
+            continue
+        tot += n
+        hit += ok
+        bad = n - ok
+        ratio = bad / n
+        rows.append(dict(
+            doc_id=doc_id, doc_group=group,
+            source_path=part.get('source_path'),
+            result='PASS' if ratio <= floor else 'FAIL',
+            body_same='', header_same='',
+            detail='' if ratio <= floor else
+                   '팩트 %d개 중 %d개(%.1f%%) 근거 못 찾음: %s'
+                   % (n, bad, 100 * ratio, ' / '.join(sample))))
+
+    print('  팩트 %s개 중 근거 확인 %s개 (%.3f%%) / %.1fs'
+          % ('{:,}'.format(tot), '{:,}'.format(hit),
+             100 * hit / max(1, tot), time.time() - t0))
+    print('  빈 값(-) %s개는 drop_empty 정책이 md 에서 지운 것이라 대조 제외'
+          % '{:,}'.format(skipped))
+    print('  이 검사는 "지어내지 않았는가"만 본다. '
+          '"빠짐없이 담았는가"(완전성)는 답하지 않는다.')
+    if not rows:
+        rows.append(dict(result='PASS', doc_id='(전체)', doc_group='',
+                         source_path='', body_same='', header_same='',
+                         detail='구조화 팩트 0건'))
     ok = sum(1 for r in rows if r['result'] == 'PASS')
     return (0 if ok == len(rows) else 2), rows
 
@@ -579,6 +709,7 @@ CHECKS = {
     'structure': check_structure,
     'grid': check_grid,
     'sums': check_sums,
+    'facts': check_facts,
 }
 
 FIELDS = ['result', 'doc_id', 'doc_group', 'source_path', 'body_same',
