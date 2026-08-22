@@ -37,7 +37,16 @@ for _s in (sys.stdout, sys.stderr):
 sys.path.insert(0, os.path.join(P.REPO_ROOT, 'src'))
 sys.path.insert(0, P.PARSER_DIR)
 
-CONFIG = {'drop_empty': True, 'schema': 'dart.doc/1', 'ver': 1}
+# 정책 파일도 config 다. 바뀌면 doc.json 을 다시 만들어야 한다 —
+# 안 그러면 정책을 고쳐도 산출물이 옛 정책 그대로 남는다.
+_POLICY_PATH = os.path.join(P.CONFIG_DIR, 'exception_policy.yaml')
+CONFIG = {
+    'drop_empty': True,
+    'schema': 'dart.doc/1',
+    'ver': 2,
+    'policy_sha256': (P.sha256_file(_POLICY_PATH)
+                      if os.path.isfile(_POLICY_PATH) else None),
+}
 CONFIG_HASH = P.config_hash(CONFIG)
 
 _G = {}

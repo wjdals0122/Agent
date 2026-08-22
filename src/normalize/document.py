@@ -32,6 +32,12 @@ SUPPORTED = ('exchange', 'major', 'holding', 'periodic')
 
 SCHEMA = 'dart.doc/1'
 
+# 이 파이프라인이 실제로 돌리는 정책 stage. 여기 없는 stage 의 규칙은
+# 정책에 적혀 있어도 **아무도 부르지 않는다.**
+# reports/exception_summary.md 가 "0건"과 "안 붙었음"을 구분하는 근거다.
+# table / parse stage 는 5단계 구조화 경로가 붙을 자리다.
+STAGES_RUN = ('sanitize',)
+
 _PARSER_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     'parser')
@@ -58,25 +64,31 @@ def _parsers():
 
 
 def build_doc(raw_bytes, doc_group, file_path=None, corp_name=None,
-              receipt_no=None, drop_empty=True):
+              receipt_no=None, drop_empty=True, policy=None):
     """원문 bytes → (doc, actions).
 
     절대 규칙 4 — 파서에 bytes 를 넘기지 않는다. decode 는 여기서 한다.
     actions 는 인코딩·정제 과정에서 무슨 일이 있었는지의 기록이며,
     아무 일도 없었으면 빈 리스트다 (절대 규칙 2).
+
+    policy: normalize.policy.Policy. 안 주면 기본 정책 파일을 읽는다.
+            어떤 예외를 어떻게 다룰지는 **전부** 거기서 온다.
     """
     if doc_group not in SUPPORTED:
         raise ValueError('파서가 없는 문서군: %r' % doc_group)
 
-    from normalize import encoding, sanitize
+    from normalize import encoding, policy as policy_mod
 
     mod, clsname = _parsers()[doc_group]
     source, actions = encoding.decode(raw_bytes)
 
-    # E1/E2 는 **세기만** 한다. 원문을 바꾸지 않으므로 출력에 영향이 없다.
-    # 기존 관대 파서가 이미 제 방식으로 처리하고 있어서, 여기서 치환하면
-    # 이중 처리가 된다 (normalize/sanitize.py 머리말 참조).
-    actions.extend(sanitize.detect(source))
+    # 정제 규칙은 코드가 아니라 config/exception_policy.yaml 이 정한다.
+    # 여기에는 E1/E2 같은 이름이 하나도 안 적혀 있다 — 정책에 무엇이
+    # 들어 있든 그대로 돈다. 지금 정책은 전부 count_only 라 source 가
+    # 그대로 돌아오고, 기록만 쌓인다.
+    pol = policy or policy_mod.load()
+    source, acts = pol.run_stage('sanitize', source)
+    actions.extend(acts)
 
     if corp_name is None and file_path is not None:
         corp_name = mod.corp_name_from_path(file_path)

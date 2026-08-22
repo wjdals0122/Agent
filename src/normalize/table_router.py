@@ -27,12 +27,29 @@ E6 — 단위 / 각주 귀속
 """
 import re
 
-__all__ = ['RE_UNIT_CAPTION', 'RE_FOOTNOTE_CAPTION',
-           'shape', 'classify', 'is_real_table',
-           'caption_kind', 'attach_direction']
+__all__ = ['shape', 'classify', 'is_real_table',
+           'caption_kind', 'attach_direction', 'patterns']
 
-RE_UNIT_CAPTION = re.compile(r'\(\s*단\s*위\s*[:：]')
-RE_FOOTNOTE_CAPTION = re.compile(r'^\s*[※*＊]')
+# 정규식은 여기에 박아 두지 않는다. config/exception_policy.yaml 이
+# 사실의 출처다 — 코드와 정책 두 군데에 같은 패턴이 있으면 한쪽만 고치고
+# 왜 안 바뀌냐고 헤매게 된다. (같은 이유로 normalize/sanitize.py 는 정책
+# 엔진으로 대체하고 지웠다.)
+_PAT = {}
+
+
+def patterns(pol=None):
+    """정책에서 캡션 정규식을 꺼내 컴파일한다. 한 번만."""
+    if _PAT:
+        return _PAT
+    if pol is None:
+        from normalize import policy as policy_mod
+        pol = policy_mod.load()
+    for rid, key in (('E6_unit_caption', 'unit'),
+                     ('E6_footnote_caption', 'footnote')):
+        rule = pol.by_id.get(rid)
+        if rule is not None and rule.detect.get('pattern'):
+            _PAT[key] = re.compile(rule.detect['pattern'])
+    return _PAT
 
 REAL = 'real_table'          # 행·열 둘 다 2 이상
 DEGENERATE = 'not_a_table'   # rows<=1 or cols<=1
@@ -64,16 +81,21 @@ def is_real_table(rows):
     return classify(rows)['kind'] == REAL
 
 
-def caption_kind(text):
-    """1칸 표의 글자가 단위인지 각주인지 그냥 문단인지."""
-    if RE_UNIT_CAPTION.search(text or ''):
+def caption_kind(text, pol=None):
+    """1칸 표의 글자가 단위인지 각주인지 그냥 문단인지.
+
+    판정 기준은 config/exception_policy.yaml 의 E6_* 규칙에서 온다.
+    """
+    pats = patterns(pol)
+    t = text or ''
+    if 'unit' in pats and pats['unit'].search(t):
         return 'unit'
-    if RE_FOOTNOTE_CAPTION.match(text or ''):
+    if 'footnote' in pats and pats['footnote'].match(t):
         return 'footnote'
     return None
 
 
-def attach_direction(kind, prev_is_real, next_is_real):
+def attach_direction(kind, prev_is_real, next_is_real, pol=None):
     """캡션을 어느 쪽 표에 붙일지. 붙일 데가 없으면 None.
 
     kind          : caption_kind() 결과

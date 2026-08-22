@@ -1,0 +1,322 @@
+# 예외 정책 — 코드가 아니라 여기가 사실의 출처다.
+#
+# 새 예외 케이스를 발견하면 코드가 아니라 이 파일과
+# docs/exception_matrix.md 에 **먼저** 적는다.
+#
+# ────────────────────────────────────────────────────────────────────
+# 필드
+# ────────────────────────────────────────────────────────────────────
+#   id        E1~E8 또는 SWALLOW_* . parse_report 와 리포트의 키다.
+#   stage     어느 층에서 도는가 (encoding / sanitize / tree / table / parse)
+#   detect    판정법. 부작용 없음.
+#               regex        pattern 으로 센다
+#               ratio        비율이 문턱 아래인지
+#               count_equal  두 수가 같은지
+#               exception    파이썬 예외를 잡은 자리
+#               manual       코드가 판정한다 (정책은 기록만 지시)
+#   handle    조치.
+#               count_only   세기만 하고 원문은 안 건드린다
+#               escape       치환한다
+#               fallback     대체 경로를 탄다
+#               record_only  기록만 (조치 없음)
+#               defer        아직 조치 안 함. 어느 단계에서 할지 적는다.
+#   severity  info / warn / error
+#   record    count / count+samples / event
+#   measured  이 코퍼스에서 실제로 잰 값 (4,616 원문 파일 / 4,204 문서)
+#
+# ────────────────────────────────────────────────────────────────────
+# 왜 E1·E2 가 escape 가 아니라 count_only 인가  ★ 중요
+# ────────────────────────────────────────────────────────────────────
+# 명세 예시는 `handle: {type: escape, to: '&amp;'}` 였다. 그런데 기존
+# 변환기는 lxml 을 안 쓴다. html.parser 를 상속한 관대 파서가
+#   · `&` → handle_entityref 에서 html5 사전에 있을 때만 실제 문자로,
+#          아니면 `&이름` 을 **원문 그대로** 되돌린다
+#   · `<` → 다음 글자가 영문자일 때만 태그로 본다
+# 로 이미 처리하고 있다. 그 위에 escape 를 얹으면 **이중 처리**가 되어
+# 4,204건에서 검증된 동작이 깨진다 (절대 규칙 6).
+#
+# 그래서 지금 정책은 "세고 남긴다"이다. 1단계에서 확인한 진짜 구멍은
+# 처리가 아니라 **기록**이었다 — 처리는 되는데 몇 건인지 아무 데도
+# 안 남았다 (절대 규칙 2). 그 구멍만 닫는다.
+#
+# escape 로 바꾸려면 먼저 _TreeBuilder.handle_entityref 를 꺼야 한다.
+# 그 전에 바꾸면 조용히 깨진다.
+
+version: 1
+
+policies:
+
+  # ══════════════════════════════════════════════════════════════════
+  - id: E1_bare_ampersand
+    title: 이스케이프 안 된 &
+    stage: sanitize
+    detect:
+      type: regex
+      pattern: '&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)'
+    handle:
+      type: count_only
+      reason: >-
+        기존 관대 파서(handle_entityref)가 이미 처리한다. 여기서 치환하면
+        이중 처리. 무조건 `&이름;` 으로 복원하면 없던 세미콜론이 생긴다 —
+        원본 `삼성E&A` → `삼성E&A;` 로 깨진 사례 exchange 73건.
+    severity: info
+    record: count+samples
+    measured:
+      occurrences: 84167
+      source_files: 1709
+      documents: 1448
+    verify: sanitize        # 치환하게 되면: 치환수 × 4 = 문자수 증가분
+
+  # ══════════════════════════════════════════════════════════════════
+  - id: E2_bare_lt
+    title: 이스케이프 안 된 < (표 캡션·본문 꺾쇠)
+    stage: sanitize
+    detect:
+      type: regex
+      pattern: '<(?![/?!]|[A-Za-z])'
+    handle:
+      type: count_only
+      reason: >-
+        html.parser 가 `<` 다음이 영문자일 때만 태그로 보므로 `<별표3-3>`,
+        `<이사ㆍ감사 전체의 보수현황>` 이 글자로 살아남는다. 이미 맞게
+        동작한다.
+    severity: info
+    record: count+samples
+    measured:
+      occurrences: 41907
+      source_files: 1352
+      documents: 1165
+      samples: ['<이사ㆍ감사 전체의 보수현황>', '<당기말>', '<별표3-3>']
+
+  # ══════════════════════════════════════════════════════════════════
+  - id: E3_declared_charset_ignored
+    title: HTML charset 오선언
+    stage: encoding
+    detect:
+      type: manual
+      note: 문서가 선언한 charset 을 판정에 쓰지 않는다. 어긋남을 기록만 한다.
+    handle:
+      type: count_only
+      reason: >-
+        exchange HTML 1,469건이 전부 charset=euc-kr 로 선언하지만 실제
+        바이트는 UTF-8. 선언을 읽지 않고 UTF-8 로 먼저 시도한다.
+    severity: info
+    record: event
+
+  - id: E3_cp949_fallback
+    title: UTF-8 실패 → cp949 폴백
+    stage: encoding
+    detect:
+      type: exception
+      catches: UnicodeDecodeError
+    handle:
+      type: fallback
+      to: cp949
+      errors: replace
+    severity: warn
+    record: event
+    note: >-
+      errors='replace' 는 조용히 글자를 U+FFFD 로 바꾼다. 몇 개를 바꿨는지
+      replacement_chars 로 남긴다. 원본 decode() 는 이걸 아무 데도 안 남겼다.
+    verify: encoding        # 문서별 한글 음절 비율 >= 5%
+
+  - id: E3_utf8_bom
+    title: UTF-8 BOM
+    stage: encoding
+    detect:
+      type: manual
+    handle:
+      type: strip
+    severity: info
+    record: event
+
+  # ══════════════════════════════════════════════════════════════════
+  - id: E4_library_container
+    title: LIBRARY 컨테이너로 인한 순회 유실
+    stage: tree
+    detect:
+      type: count_equal
+      left: '//SECTION-2 정규식 개수'
+      right: 순회 도달 개수
+    handle:
+      type: record_only
+      reason: >-
+        기존 순회가 descendant 축(catch-all 재귀)이라 유실이 없다.
+        고칠 것이 없고, 깨지지 않았는지 계속 확인하는 것이 조치다.
+    severity: error         # 어긋나면 진짜 사고다
+    record: count
+    measured:
+      section2_regex: 52756
+      section2_reached: 52756
+      lost: 0
+      library_nodes: 29339
+    note: >-
+      grep -c LIBRARY parser/*.py → major 1, holding 0, periodic 0.
+      LIBRARY 라는 문자열을 한 번도 안 쓰는 코드가 28,334개의 컨테이너를
+      올바르게 통과한다. 순회를 "모르는 태그는 건너뛴다"로 바꾸면 조용히
+      깨지고, 바꾼 사람은 무엇을 껐는지 알 수 없다.
+    verify: structure
+
+  # ══════════════════════════════════════════════════════════════════
+  - id: E5_not_a_table
+    title: 표가 아닌 TABLE
+    stage: table
+    detect:
+      type: shape
+      rule: rows <= 1 or cols <= 1
+    handle:
+      type: demote
+      to: caption_or_paragraph
+      reason: 표로 렌더링하지 않고 제목/문단으로 강등. 기존 _one_cell 동작.
+    severity: info
+    record: count
+    measured:
+      tables: 1577395
+      not_a_table: 846179
+      ratio: 0.536
+
+  # ══════════════════════════════════════════════════════════════════
+  - id: E6_unit_caption
+    title: 단위 캡션 귀속
+    stage: table
+    detect:
+      type: regex
+      pattern: '\(\s*단\s*위\s*[:：]'
+      scope: degenerate_table_text
+    handle:
+      type: attach
+      direction: next        # 실측 확정
+    severity: info
+    record: count
+    measured:
+      captions: 318391
+      next_only: 0.548
+      prev_only: 0.002
+      both: 0.439
+      neither: 0.011
+    note: 뒤에만 54.8% vs 앞에만 0.2%. 명세대로 다음 형제 귀속.
+
+  - id: E6_footnote_caption
+    title: 각주 캡션 귀속
+    stage: table
+    detect:
+      type: regex
+      pattern: '^\s*[※*＊]'
+      scope: degenerate_table_text
+    handle:
+      type: attach
+      direction: prev
+      only_if_real_neighbour: true    # ★ 이 조건이 핵심
+    severity: info
+    record: count
+    measured:
+      captions: 12055
+      prev_only: 0.318
+      next_only: 0.100
+      both: 0.130
+      neither: 0.452
+    note: >-
+      방향은 명세대로 이전 형제지만 45.2%는 양옆 어디에도 진짜 표가 없다.
+      무조건 붙이면 없는 귀속을 만들어낸다. 옆에 진짜 표가 있을 때만 붙인다.
+
+  # ══════════════════════════════════════════════════════════════════
+  - id: E7_missing_period_date
+    title: 회계기간 부재 (기수 표기에 날짜가 안 붙음)
+    stage: parse
+    detect:
+      type: regex
+      pattern: '제\s*\d{1,3}\s*기'
+    handle:
+      type: defer
+      to_stage: 5
+      reason: 기수 → 실제 날짜 매핑은 구조화 경로(extract/)에서 만든다.
+    severity: info
+    record: count
+    measured:
+      period_labels: 155048
+
+  # ══════════════════════════════════════════════════════════════════
+  - id: E8_acode_repeat
+    title: ACODE 반복 — 키 설계
+    stage: parse
+    detect:
+      type: manual
+    handle:
+      type: defer
+      to_stage: 5
+      key: [table_idx, row_idx, col_idx, acode]
+      reason: >-
+        ★ 명세가 지정한 (table_idx, row_idx, acode) 는 이 코퍼스에서
+        27.45% 를 잃는다. 같은 행 안에서 같은 ACODE 가 여러 열에 반복되기
+        때문(당기/전기, 지배/비지배 같은 다열 표), 실측 2,095,725건.
+        열 번호를 넣으면 유실 0.00%. dict 금지라는 의도는 그대로 지키되
+        키를 한 칸 넓힌다.
+    severity: error
+    record: count
+    measured:
+      te_with_acode: 7635332
+      loss_dict_by_acode: 0.8675
+      loss_spec_key_3tuple: 0.2745
+      loss_4tuple: 0.0000
+      same_row_repeat: 2095725
+
+  # ══════════════════════════════════════════════════════════════════
+  # 삼키는 예외 — 코드에 남아 있는 try/except 자리
+  # ══════════════════════════════════════════════════════════════════
+
+  - id: SWALLOW_charref_bad
+    title: 잘못된 문자 참조 (&#...;)
+    stage: sanitize
+    detect:
+      type: exception
+      catches: ValueError
+      where: _TreeBuilder.handle_charref
+    handle:
+      type: fallback
+      to: 원문 그대로 '&#name;'
+    severity: info
+    record: event
+
+  - id: SWALLOW_peek_name_failed
+    title: 회사명 표기 훑기 실패
+    stage: parse
+    detect:
+      type: exception
+      catches: Exception
+      where: rag_pipeline._peek_name_variant
+    handle:
+      type: fallback
+      to: 'None (이 문서의 표기를 동의어에서 뺀다)'
+    severity: warn
+    record: event
+    note: >-
+      원본은 bare except 로 None 을 돌려주고 **아무 것도 안 남긴다.**
+      한 회사의 표기가 통째로 빠져도 알 방법이 없다. 동의어가 검색
+      리콜을 결정하므로 조용한 실패가 그대로 검색 누락이 된다.
+
+  - id: SWALLOW_convert_body_failed
+    title: 본문 변환 실패
+    stage: parse
+    detect:
+      type: exception
+      catches: Exception
+      where: rag_pipeline.process_one
+    handle:
+      type: fallback
+      to: "('error', repr(e), None)"
+    severity: error
+    record: event
+    note: repr(e) 만 남고 traceback 이 사라진다. 드라이버가 따로 남긴다.
+
+  - id: SWALLOW_int_cast
+    title: rowspan/colspan 숫자 변환 실패
+    stage: tree
+    detect:
+      type: exception
+      catches: [TypeError, ValueError]
+      where: normalize.value.to_int
+    handle:
+      type: fallback
+      to: default
+    severity: info
+    record: count

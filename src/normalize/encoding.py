@@ -50,7 +50,25 @@ def detect(raw_bytes, declared=None):
     }
 
 
-def decode(raw_bytes, declared=None):
+def _fallback_spec(pol):
+    """폴백 코덱은 정책이 정한다 (E3_cp949_fallback.handle).
+
+    제어 흐름("UTF-8 먼저, 실패하면 폴백")은 코드에 남는다 — 그건 정책이
+    아니라 순서다. 정책이 정하는 것은 **무엇으로 폴백하고 실패 문자를
+    어떻게 다루는가**다.
+    """
+    if pol is None:
+        try:
+            from normalize import policy as policy_mod
+            pol = policy_mod.load()
+        except Exception:
+            pol = None
+    rule = pol.by_id.get('E3_cp949_fallback') if pol is not None else None
+    h = (rule.handle if rule is not None else None) or {}
+    return h.get('to', 'cp949'), h.get('errors', 'replace')
+
+
+def decode(raw_bytes, declared=None, policy=None):
     """(text, actions) 를 돌려준다.
 
     text 는 원본 `decode()` 와 바이트 동일하다.
@@ -69,10 +87,13 @@ def decode(raw_bytes, declared=None):
     try:
         return raw_bytes.decode('utf-8'), actions
     except UnicodeDecodeError as e:
-        text = raw_bytes.decode('cp949', errors='replace')
+        codec, errs = _fallback_spec(policy)
+        text = raw_bytes.decode(codec, errors=errs)
         actions.append({
             'rule': 'E3_cp949_fallback',
-            'action': 'decode_cp949_replace',
+            'action': 'decode_fallback',
+            'codec': codec,
+            'errors': errs,
             'count': 1,
             'utf8_error_at': getattr(e, 'start', None),
             # errors='replace' 는 조용히 글자를 먹는다. 몇 개인지 남긴다.
@@ -81,6 +102,6 @@ def decode(raw_bytes, declared=None):
         return text, actions
 
 
-def decode_text(raw_bytes, declared=None):
+def decode_text(raw_bytes, declared=None, policy=None):
     """기존 호출부용 — str 만 돌려준다. 원본 `decode()` 와 동일."""
-    return decode(raw_bytes, declared)[0]
+    return decode(raw_bytes, declared, policy)[0]
