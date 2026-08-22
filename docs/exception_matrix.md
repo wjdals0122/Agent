@@ -84,8 +84,14 @@
 
 | 항목 | 내용 |
 |---|---|
-| 근거 코드 | [major_parser.py:297](../parser/major_parser.py#L297) `_PASSTHROUGH = {'BODY','LIBRARY','TABLE-GROUP',...}` + [major_parser.py:400](../parser/major_parser.py#L400) 마지막 catch-all `self._walk(c, out, depth, ctx)` |
+| 근거 코드 | major: [major_parser.py:297](../parser/major_parser.py#L297) `_PASSTHROUGH = {'BODY','LIBRARY','TABLE-GROUP',...}` + [major_parser.py:400](../parser/major_parser.py#L400) 마지막 catch-all.<br>holding·periodic: **catch-all 재귀 한 줄이 전부.** `_PASSTHROUGH` 자체가 없다. |
 | 기존 목록 | **없음.** 예상대로 md 파이프라인이 예외를 던지지 않아 목록에 오르지 못했다. |
+
+`grep -c LIBRARY parser/*.py` → major **1**, holding **0**, periodic **0**.
+그런데 실측상 holding에 2,025개, periodic에 26,309개의 `LIBRARY` 노드가 있고
+전부 정상 통과한다. 즉 **`LIBRARY`라는 문자열을 한 번도 본 적 없는 코드가
+28,334개의 LIBRARY 컨테이너를 올바르게 훑고 있다.** major만 이름을 알고 있고,
+그마저도 "제목 없이 통과시킬 태그" 목록에 우연히 들어가 있는 것이다.
 
 기존 `_walk`는 태그를 알든 모르든 마지막에 무조건 자식으로 재귀한다. 그래서
 `LIBRARY`가 중간에 끼어도 `SECTION-2`에 **도달은 한다.** 명세가 말한 "30% 유실"은
@@ -94,9 +100,12 @@
 
 다만 두 가지가 걸린다.
 
-1. **의도가 코드에 없다.** `LIBRARY`가 `_PASSTHROUGH`에 있는 건 "제목 없이 통과"
-   시키기 위해서지 "컨테이너 유실 방지" 때문이 아니다. 누가 catch-all 재귀를
-   "알 수 없는 태그는 건너뛴다"로 바꾸면 조용히 30%가 사라진다.
+1. **의도가 코드에 없다.** major에서 `LIBRARY`가 `_PASSTHROUGH`에 있는 건
+   "제목 없이 통과"시키기 위해서지 "컨테이너 유실 방지" 때문이 아니다.
+   holding·periodic에는 그 이름조차 없다. 누가 catch-all 재귀를
+   "알 수 없는 태그는 건너뛴다"로 바꾸면 조용히 30%가 사라지고,
+   **바꾼 사람은 자기가 무엇을 껐는지 알 방법이 없다** — 지운 줄에는
+   LIBRARY라는 말이 안 적혀 있기 때문이다.
 2. **`//SECTION-2` 개수 = 도달 개수를 확인하는 장치가 없다.** 검증 골든셋 4번
    (`structure`)이 바로 이걸 세우기 위한 것이다.
 

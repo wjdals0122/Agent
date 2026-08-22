@@ -128,12 +128,18 @@ def check_baseline(args):
             detail='' if body_same else '서술 텍스트 불일치 (%+d bytes)'
                    % (rec['bytes'] - old['bytes'])))
 
-    seen = set(r['source_path'] for r in rows)
-    for sp, old in frozen.items():
-        if sp not in seen:
-            rows.append(dict(source_path=sp, doc_id=old.get('doc_id'),
-                             result='MISSING', detail='이번 실행에서 안 나옴',
-                             body_same='', header_same=''))
+    if not args.limit:
+        # --limit 미리보기에서는 '안 돌린 문서'를 결손으로 세면 안 된다.
+        # 베이스라인에 있는데 전량 실행에서 안 나온 것만 진짜 MISSING이다.
+        seen = set(r['source_path'] for r in rows)
+        for sp, old in frozen.items():
+            if sp not in seen:
+                rows.append(dict(source_path=sp, doc_id=old.get('doc_id'),
+                                 result='MISSING', detail='이번 실행에서 안 나옴',
+                                 body_same='', header_same=''))
+    else:
+        print('  (--limit %d: 나머지 %d건은 이번에 안 돌렸다 — 결손으로 세지 않는다)'
+              % (args.limit, len(frozen) - len(rows)))
 
     ok = sum(1 for r in rows if r['result'] == 'PASS')
 
