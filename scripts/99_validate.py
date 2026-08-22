@@ -299,7 +299,78 @@ def check_docjson(args):
 
 
 # ══════════════════════════════════════════════════════════════════════
-# 2~6. 아직 선행 단계가 없는 검사
+# 6. sums — {XBRL} 표의 총계 행 정합
+# ══════════════════════════════════════════════════════════════════════
+
+def check_sums(args):
+    """총계 = 부분합 이 맞는가.
+
+    불일치는 rowspan 복제나 헤더밴드 판정 오류의 신호다. 그런 표는
+    parse_confidence=low 로 강등돼 facts_* 진입이 막힌다 —
+    **잘못된 숫자를 확신 있게 답하는 경로를 구조적으로 차단**하는 장치다.
+
+    그래서 이 검사의 PASS 기준은 "불일치 0" 이 아니라
+    "불일치가 전부 low 로 강등됐는가" 다. 강등 없이 통과한 불일치가
+    하나라도 있으면 FAIL.
+    """
+    import gzip
+    if not os.path.isdir(P.INTERIM_DOCS_DIR):
+        print('doc.json 이 없다. scripts/03_build_docjson.py 를 먼저.')
+        return 3, []
+
+    files = sorted(f for f in os.listdir(P.INTERIM_DOCS_DIR)
+                   if f.endswith('.json.gz'))
+    if args.limit:
+        files = files[:args.limit]
+
+    rows = []
+    n_groups = n_checked = n_bad = n_low = 0
+    t0 = time.time()
+    for i, fn in enumerate(files, 1):
+        with gzip.open(os.path.join(P.INTERIM_DOCS_DIR, fn), 'rt',
+                       encoding='utf-8') as f:
+            payload = json.load(f)
+        for part in payload.get('parts') or []:
+            st = (part.get('doc') or {}).get('structured') or {}
+            for g in st.get('financials') or []:
+                n_groups += 1
+                checks = g.get('sum_checks') or []
+                bad = [c for c in checks if not c['ok']]
+                n_checked += len(checks)
+                low = g.get('parse_confidence') == 'low'
+                if low:
+                    n_low += 1
+                if not bad:
+                    continue
+                n_bad += len(bad)
+                # 불일치가 있는데 강등이 안 됐으면 그게 진짜 사고다
+                ok = low
+                worst = max(bad, key=lambda c: abs(c['diff']))
+                rows.append(dict(
+                    doc_id=payload['doc_id'], doc_group=payload.get('doc_group'),
+                    source_path=part.get('source_path'),
+                    result='PASS' if ok else 'FAIL',
+                    body_same='', header_same='',
+                    detail='%s 불일치 %d건 (최대 차 %s, %s) conf=%s'
+                           % (g['aclass'], len(bad), '{:,}'.format(worst['diff']),
+                              worst['check'][:60], g['parse_confidence'])))
+        if i % 1000 == 0:
+            print('  ... %d/%d (%.0fs)' % (i, len(files), time.time() - t0))
+
+    print('')
+    print('{XBRL} 그룹 %s개 / 총계 검사 %s건 / 불일치 %s건 / low 강등 %s개'
+          % ('{:,}'.format(n_groups), '{:,}'.format(n_checked),
+             '{:,}'.format(n_bad), '{:,}'.format(n_low)))
+    if not rows:
+        rows.append(dict(result='PASS', doc_id='(전체)',
+                         detail='총계 불일치 0건', body_same='', header_same='',
+                         source_path=''))
+    ok = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok == len(rows) else 2), rows
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 2~5. 아직 선행 단계가 없는 검사
 # ══════════════════════════════════════════════════════════════════════
 
 def _not_ready(name, needs):
@@ -316,7 +387,7 @@ CHECKS = {
     'encoding': _not_ready('encoding', '2단계 normalize/encoding.py'),
     'structure': _not_ready('structure', '2단계 normalize/tree.py'),
     'grid': _not_ready('grid', '2단계 normalize/grid.py'),
-    'sums': _not_ready('sums', '5단계 extract/financials.py'),
+    'sums': check_sums,
 }
 
 FIELDS = ['result', 'doc_id', 'doc_group', 'source_path', 'body_same',

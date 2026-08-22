@@ -38,6 +38,16 @@ SCHEMA = 'dart.doc/1'
 # table / parse stage 는 5단계 구조화 경로가 붙을 자리다.
 STAGES_RUN = ('sanitize',)
 
+# 5단계 구조화 대상 문서군.
+#   financials  {XBRL} 재무제표 — periodic 에만 있다
+#   acode       ACODE 기반 수시공시 — major / holding
+# 정기공시 주석표 509종 44,037개는 구조화하지 않는다. md 청크로 흘려보내고
+# parse_confidence: low 를 붙인다 (명세).
+STRUCTURED = {'periodic': ('financials',),
+              'major': ('acode',),
+              'holding': ('acode',),
+              'exchange': ('exchange',)}
+
 _PARSER_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     'parser')
@@ -95,7 +105,83 @@ def build_doc(raw_bytes, doc_group, file_path=None, corp_name=None,
 
     parser = getattr(mod, clsname)(drop_empty=drop_empty)
     doc = parser.parse(source, receipt_no, corp_name)
+
+    # ── 5단계: 구조화 경로 ──────────────────────────────────────────
+    # 여기서 트리를 **한 번 더 세우지 않는다** — 파서가 방금 쓴 것과 같은
+    # 소스를 쓰되, 구조화가 필요한 문서군에서만 트리를 세운다.
+    # 결과는 doc.json 안에 들어가므로 팩트 테이블은 XML 을 다시 안 본다.
+    struct, sacts = _structure(mod, source, doc_group, drop_empty, doc=doc)
+    if struct:
+        doc['structured'] = struct
+    actions.extend(sacts)
     return doc, actions
+
+
+def _structure(mod, source, doc_group, drop_empty, doc=None):
+    """문서군별 구조화. (structured dict, actions)."""
+    wanted = STRUCTURED.get(doc_group)
+    if not wanted:
+        return None, []
+
+    out = {}
+    actions = []
+
+    if 'exchange' in wanted:
+        # 거래소공시는 파서가 이미 라벨/값/섹션을 다 갈라 놓았다
+        # (30,525행 전수 분류, 미분류 0건). HTML 을 다시 안 읽고
+        # chunks 에서 만든다.
+        from extract import exchange_html as xh
+        st = xh.build(doc or {})
+        if st['n_fields'] or st['notes']:
+            out['exchange'] = st
+            actions.append({
+                'rule': 'S5_exchange', 'stage': 'extract',
+                'action': 'structure', 'count': st['n_fields'],
+                'sections': st['n_sections'], 'notes': len(st['notes']),
+            })
+        return (out or None), actions
+
+    from normalize import tree, value, grid, table_router
+
+    b = mod._TreeBuilder()
+    b.feed(source)
+    root = b.root
+
+    if 'financials' in wanted:
+        from extract import financials as fin
+        groups = [fin.finalize(g) for g in fin.extract_groups(
+            root, tree, value, grid_mod=grid, cell_cls=mod._Cell,
+            router=table_router)]
+        if groups:
+            out['financials'] = groups
+            low = [g for g in groups if g['parse_confidence'] == 'low']
+            actions.append({
+                'rule': 'S5_financials', 'stage': 'extract',
+                'action': 'structure', 'count': len(groups),
+                'low_confidence': len(low),
+                'aclasses': sorted(set(g['aclass'] for g in groups)),
+            })
+            if low:
+                actions.append({
+                    'rule': 'S5_low_confidence', 'stage': 'extract',
+                    'action': 'demote', 'severity': 'warn',
+                    'count': len(low),
+                    'reasons': sorted(set(r for g in low
+                                          for r in g['confidence_reasons'])),
+                })
+
+    if 'acode' in wanted:
+        from extract import acode as ac
+        facts = ac.extract_facts(root, tree, value, grid_mod=grid,
+                                 cell_cls=mod._Cell)
+        if facts:
+            out['acode_facts'] = facts
+            actions.append({
+                'rule': 'S5_acode', 'stage': 'extract',
+                'action': 'structure', 'count': len(facts),
+            })
+
+    return (out or None), actions
 
 
 def render(doc, doc_group, with_header=False):

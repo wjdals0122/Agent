@@ -37,15 +37,37 @@ for _s in (sys.stdout, sys.stderr):
 sys.path.insert(0, os.path.join(P.REPO_ROOT, 'src'))
 sys.path.insert(0, P.PARSER_DIR)
 
-# 정책 파일도 config 다. 바뀌면 doc.json 을 다시 만들어야 한다 —
-# 안 그러면 정책을 고쳐도 산출물이 옛 정책 그대로 남는다.
+# ── 멱등 키 ─────────────────────────────────────────────────────────
+# 원문 mtime 만으로는 부족하다. 산출물의 내용은 **코드와 정책**에도
+# 달려 있어서, 둘 중 하나가 바뀌면 doc.json 을 다시 만들어야 한다.
+#
+# 처음에는 손으로 올리는 'ver' 정수를 썼는데 그게 실제로 깨졌다 —
+# 편집 스크립트가 문자열을 못 찾아 ver 이 안 올라갔고, 그 사실을 아무도
+# 모른 채 3,208개는 새 추출기 없이, 993개는 있는 채로 섞인 데이터셋이
+# 만들어졌다. 사람이 지켜야 하는 불변식은 안 지켜진다.
+#
+# → 추출·정규화 코드의 **실제 소스 해시**를 키에 넣는다. 코드를 고치면
+#   자동으로 무효화된다. 손으로 올릴 것이 없다.
+def _code_fingerprint():
+    roots = [os.path.join(P.REPO_ROOT, 'src', 'normalize'),
+             os.path.join(P.REPO_ROOT, 'src', 'extract')]
+    parts = []
+    for r in roots:
+        if not os.path.isdir(r):
+            continue
+        for fn in sorted(os.listdir(r)):
+            if fn.endswith('.py'):
+                parts.append(fn + ':' + P.sha256_file(os.path.join(r, fn))[:16])
+    return parts
+
+
 _POLICY_PATH = os.path.join(P.CONFIG_DIR, 'exception_policy.yaml')
 CONFIG = {
     'drop_empty': True,
     'schema': 'dart.doc/1',
-    'ver': 2,
     'policy_sha256': (P.sha256_file(_POLICY_PATH)
                       if os.path.isfile(_POLICY_PATH) else None),
+    'code': _code_fingerprint(),
 }
 CONFIG_HASH = P.config_hash(CONFIG)
 

@@ -1,0 +1,6 @@
+{
+  "_comment": "Copy this to config.json (same folder) to override the default paths. config.json is gitignored-by-convention (not required by any script) - delete any key you don't want to override, since a missing/null key falls back to the built-in default (<repo>/corpus, <repo>/corpus/rag, <repo>/corpus/manifest.jsonl). Environment variables DART_CORPUS_DIR / DART_RAG_DIR / DART_MANIFEST_PATH take priority over this file if both are set.",
+  "corpus_dir": "D:/dis-044/corpus",
+  "rag_dir": null,
+  "manifest_path": null
+}
