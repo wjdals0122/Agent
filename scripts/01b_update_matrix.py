@@ -54,8 +54,9 @@ def build_block(recs):
 
     L = []
     A = L.append
-    A('원문 **%s개**를 읽어 다시 잰 값이다 (명세의 숫자를 옮겨 적지 않았다).'
-      % n(len(ok)))
+    A('원문 파일 **%s개**를 읽어 다시 잰 값이다 (명세의 숫자를 옮겨 적지 '
+      '않았다). 단위가 **파일**임에 주의 — 문서(doc_id)는 4,204개이고 '
+      'periodic 은 한 문서에 원문이 최대 3개다.' % n(len(ok)))
     if bad:
         A('')
         A('> 스캔 실패 %d건: %s'
@@ -65,7 +66,7 @@ def build_block(recs):
     # ── 문서군별 원표 ──────────────────────────────────────────────
     A('### 문서군별')
     A('')
-    A('| 문서군 | 문서 | E1 bare `&` | E2 bare `<` | E3 한글<5% | E4 `//SECTION-2` 정규식 → 도달 | LIBRARY 노드 | E5 TABLE | E5 표 아님 | E6 단위캡션 | E7 기수표기 | E8 TE(ACODE) |')
+    A('| 문서군 | 원문 파일 | E1 bare `&` | E2 bare `<` | E3 한글<5% | E4 `//SECTION-2` 정규식 → 도달 | LIBRARY 노드 | E5 TABLE | E5 표 아님 | E6 단위캡션 | E7 기수표기 | E8 TE(ACODE) |')
     A('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
     NA = '—'          # 0건이 아니라 '잴 것이 없음'
     for g in groups + ['**합계**']:
@@ -85,7 +86,7 @@ def build_block(recs):
         deg = tot(rs, 'e5_degenerate')
         tab = tot(rs, 'e5_tables')
         degcell = ('%s (%.0f%%)' % (n(deg), 100.0 * deg / tab)) if tab else NA
-        A('| %s | %s | %s건 / %s문서 | %s건 / %s문서 | %s | %s | %s | %s | %s | %s | %s | %s |'
+        A('| %s | %s | %s건 / %s파일 | %s건 / %s파일 | %s | %s | %s | %s | %s | %s | %s | %s |'
           % (g, n(len(rs)),
              n(tot(rs, 'e1_bare_amp')), n(ndocs(rs, 'e1_bare_amp')),
              n(tot(rs, 'e2_bare_lt')), n(ndocs(rs, 'e2_bare_lt')),

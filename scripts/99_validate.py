@@ -2,6 +2,7 @@
 """검증 골든셋 — 6종을 돌리고 reports/에 CSV를 쓴다.
 
     --baseline   서술 md 해시가 0단계와 동일한가          (0단계 완료 조건)
+    --docjson    doc.json 을 거쳐 렌더해도 동일한가        (3단계 완료 조건)
     --sanitize   이스케이프 횟수 × 4 = 문자수 증가분      (2단계 이후)
     --encoding   문서별 한글 음절 비율 >= 5%
     --structure  //SECTION-2 개수 = 순회 도달 개수
@@ -204,6 +205,100 @@ def _verify_convert(path):
 
 
 # ══════════════════════════════════════════════════════════════════════
+# 1b. docjson — doc.json 을 거쳐 렌더한 결과가 0단계와 같은가
+# ══════════════════════════════════════════════════════════════════════
+
+def check_docjson(args):
+    """3단계 완료 조건.
+
+    renderer 의 입력이 XML 트리가 아니라 doc.json 이 됐다. XML 은 이제
+    한 번만 파싱되고, 마크다운은 doc.json 에서만 나온다. 그 경로가
+    0단계 해시와 바이트 동일한지 본다.
+    """
+    import gzip
+    if not os.path.isfile(P.BASELINE_INDEX):
+        print('베이스라인이 없다. scripts/00_freeze_baseline.py 를 먼저.')
+        return 3, []
+    if not os.path.isdir(P.INTERIM_DOCS_DIR):
+        print('doc.json 이 없다. scripts/03_build_docjson.py 를 먼저.')
+        return 3, []
+
+    frozen = {}
+    with open(P.BASELINE_INDEX, encoding='utf-8') as f:
+        for line in f:
+            r = json.loads(line)
+            frozen[r['key']] = r
+    print('베이스라인 %d건 로드' % len(frozen))
+
+    sys.path.insert(0, os.path.join(P.REPO_ROOT, 'src'))
+    from normalize import document
+
+    files = sorted(f for f in os.listdir(P.INTERIM_DOCS_DIR)
+                   if f.endswith('.json.gz'))
+    if args.limit:
+        files = files[:args.limit]
+    print('doc.json %d개에서 렌더 (직접 파싱 없음)' % len(files))
+
+    rows = []
+    seen_keys = set()
+    t0 = time.time()
+    for i, fn in enumerate(files, 1):
+        path = os.path.join(P.INTERIM_DOCS_DIR, fn)
+        try:
+            with gzip.open(path, 'rt', encoding='utf-8') as f:
+                payload = json.load(f)
+        except Exception as e:
+            rows.append(dict(source_path=fn, doc_id=fn[:-8], result='FAIL',
+                             detail='doc.json 읽기 실패: %r' % e,
+                             body_same='', header_same=''))
+            continue
+        group = payload.get('doc_group')
+        for part in payload.get('parts') or []:
+            key = part['part_key']
+            seen_keys.add(key)
+            old = frozen.get(key)
+            try:
+                body = document.render(part['doc'], group, with_header=False)
+            except Exception as e:
+                rows.append(dict(source_path=part['source_path'],
+                                 doc_id=payload['doc_id'], doc_group=group,
+                                 result='FAIL', detail='렌더 실패: %r' % e,
+                                 body_same='', header_same=''))
+                continue
+            if old is None:
+                rows.append(dict(source_path=part['source_path'],
+                                 doc_id=payload['doc_id'], doc_group=group,
+                                 result='NEW', detail='베이스라인에 없는 키 %s' % key,
+                                 body_same='', header_same=''))
+                continue
+            got = P.sha256_text(body)
+            same = got == old['body_sha256']
+            rows.append(dict(
+                source_path=part['source_path'], doc_id=payload['doc_id'],
+                doc_group=group, result='PASS' if same else 'FAIL',
+                body_same=same, header_same='',
+                baseline_body=old['body_sha256'], current_body=got,
+                detail='' if same else 'doc.json 경유 렌더가 베이스라인과 다름'))
+        if i % 500 == 0:
+            print('  ... %d/%d (%.0fs)' % (i, len(files), time.time() - t0))
+
+    if not args.limit:
+        for key, old in frozen.items():
+            if key not in seen_keys:
+                rows.append(dict(source_path=old['source_path'],
+                                 doc_id=old.get('doc_id'), result='MISSING',
+                                 detail='doc.json 에 이 part 가 없다',
+                                 body_same='', header_same=''))
+
+    n_docs = len(files)
+    print('')
+    print('doc.json %d개 / part %d개 / 렌더 %.1fs'
+          % (n_docs, len(seen_keys), time.time() - t0))
+    ok = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok == len(rows) else 2), rows
+
+
+# ══════════════════════════════════════════════════════════════════════
 # 2~6. 아직 선행 단계가 없는 검사
 # ══════════════════════════════════════════════════════════════════════
 
@@ -216,6 +311,7 @@ def _not_ready(name, needs):
 
 CHECKS = {
     'baseline': check_baseline,
+    'docjson': check_docjson,
     'sanitize': _not_ready('sanitize', '2단계 normalize/sanitize.py'),
     'encoding': _not_ready('encoding', '2단계 normalize/encoding.py'),
     'structure': _not_ready('structure', '2단계 normalize/tree.py'),
