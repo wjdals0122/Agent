@@ -4,7 +4,7 @@
   "text": 649388,
   "table": 653950
  },
- "total_chars": 765196718,
+ "total_chars": 765196755,
  "avg_chars": 587,
  "numeric_tables": 423048,
  "numeric_tables_with_unit": 413057,
@@ -14,5 +14,5 @@
   "high": 14139,
   "low": 2633
  },
- "elapsed_sec": 112.3
+ "elapsed_sec": 110.9
 }

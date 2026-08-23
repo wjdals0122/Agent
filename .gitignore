@@ -9,5 +9,7 @@ corpus/rag/
 
 # 검증 CSV는 매 실행마다 새로 나온다(건당 1MB+). 결과는 커밋 메시지에 남긴다.
 reports/*.csv
+# 단, 베이스라인을 의도적으로 바꾼 기록은 재생성되지 않는 감사 자료다.
+!reports/baseline_correction_*.csv
 
 # baseline/ 은 무시하지 않는다 — 회귀 기준선 해시는 추적해야 기준선이다.

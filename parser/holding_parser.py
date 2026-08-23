@@ -77,6 +77,7 @@ from normalize.tree import (                        # noqa: F401
     own_tables as _own_tables,
     find as _find,
     in_thead as _tree_in_thead,
+    para_text as _para_text,
 )
 from normalize.encoding import decode_text as decode  # noqa: F401
 from normalize.grid import expand as _grid_expand      # noqa: F401
@@ -175,33 +176,6 @@ class _TreeBuilder(HTMLParser):
 
 
 
-def _para_text(node):
-    """문단(<P>) 안의 글자를 모으되, **태그 경계**에서 공백이 전혀 없으면
-    한 칸 끼운다. 원문이 굵게 표시한 소제목 <SPAN>을 바로 뒤 문장에 공백
-    없이 붙여 쓰는 경우가 있다 — 예: <SPAN>나. 소수주주권</SPAN>회사는...
-    그대로 이어 붙이면 "나. 소수주주권회사는"처럼 라벨이 문장에 녹아들어
-    회사 이름처럼 오독된다.
-
-    ⚠️ node.raw의 조각 경계가 전부 '진짜' 태그 경계는 아니다. html.parser는
-    이스케이프 안 된 '&'를 만나면(예: "P&A인수하여") 그 앞뒤 글자를 별개
-    조각으로 쪼갠다 — 실제 원문엔 공백이 없는데도. 그래서 두 조각
-    **모두** 문자열이면(둘 다 태그에서 나온 게 아니면) 공백을 넣지 않는다.
-    조각 중 하나라도 <SPAN> 등 태그에서 나왔을 때만 공백 경계로 본다.
-
-    표 칸(_text_no_table)에는 적용하지 않는다 — "1,234"+"백만원"처럼
-    붙어야 자연스러운 숫자·단위 조합이 흔해서다.
-    """
-    parts = [(_text(r), True) if isinstance(r, _Node) else (r, False)
-             for r in node.raw]
-    out = []
-    prev_from_tag = False
-    for text, from_tag in parts:
-        if (out and text and out[-1] and (prev_from_tag or from_tag)
-                and not out[-1][-1].isspace() and not text[0].isspace()):
-            out.append(' ')
-        out.append(text)
-        prev_from_tag = from_tag
-    return ''.join(out)
 
 
 def _text_no_table(node):

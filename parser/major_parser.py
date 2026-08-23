@@ -85,6 +85,7 @@ from normalize.tree import (                        # noqa: F401
     own_tables as _own_tables,
     find as _find,
     in_thead as _tree_in_thead,
+    para_text as _para_text,
 )
 from normalize.encoding import decode_text as decode  # noqa: F401
 from normalize.grid import expand as _grid_expand      # noqa: F401
@@ -351,7 +352,12 @@ class MajorParser:
                 continue                      # 표 안으로 다시 안 들어간다
 
             if t == 'P':
-                s = clean(_text(c))
+                # 문단 융합 수정. holding/periodic 판본을 그대로 쓰면
+                # major 에서는 개악이다 — <SPAN> 을 회사명·날짜에도 써서
+                # '두산에너빌 리티', '(주) 셀트리온' 으로 쪼개진다(실측:
+                # 삽입 285개 중 개선 36개). 그래서 앞 조각이 **소제목
+                # 모양**일 때만 공백을 넣는 좁은 판본을 쓴다.
+                s = clean(_para_text(c, subtitle_only=True))
                 if s:
                     out.append(('p', s))
                 continue
