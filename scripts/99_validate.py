@@ -9,6 +9,7 @@
     --grid       표별 열 수 단일값 (ragged 0)
     --sums       {XBRL} 표의 총계 행 정합                 (5단계 이후)
     --facts      구조화 팩트가 원문에 근거하는가          (환각 없음)
+    --chunks     청크가 자족적인가 (숫자에 단위가 붙는가)
     --all        전부
 
 각 검사는 reports/validate_{name}.csv 를 남긴다. 요약은 진행률이 아니라
@@ -429,6 +430,80 @@ def check_facts(args):
 
 
 # ══════════════════════════════════════════════════════════════════════
+# 9. chunks — 청크가 자족적인가 (LLM 이 조각 하나만 보고 답할 수 있는가)
+# ══════════════════════════════════════════════════════════════════════
+
+def check_chunks(args):
+    """청크가 자족적인가 — 숫자에 단위가 붙는가, 안 붙었으면 표시됐는가.
+
+    이 검사가 있는 이유 — 실측. 청킹 전에는 숫자 표 청크의 **78.9%가
+    단위를 이웃 청크에만** 갖고 있었다. 그대로 조각내면 에이전트는
+    88,773,116 을 보고 원인지 천원인지 주인지 모른 채 답한다.
+
+    판정 기준을 두 번 고쳤다.
+      · 처음: `unit` 필드가 채워졌나 → 틀렸다. 단위가 행 라벨에 박힌
+        경우(예: '계약금액(원)')를 실패로 잡았다. 모델은 본문을 보므로
+        본문 기준이어야 한다.
+      · 다음: 본문에 단위가 있나 → 여전히 틀렸다. 원문이 '금 액' 이라고만
+        적고 단위를 아예 안 쓰는 서식이 있다(KB금융 자기주식 취득한도).
+        다른 절의 단위를 끌어다 붙이면 그게 단위 추측이다.
+
+    그래서 지금은 **표시의 정확성**을 본다. 단위를 못 찾은 청크는
+    `unit_known: false` 로 표시되어야 하고, 그러면 에이전트가 "단위가
+    명시되지 않았다"고 답할 수 있다. 지어내지 않는 것이 목표지
+    100%%를 만드는 것이 목표가 아니다.
+    """
+    import gzip
+    path = os.path.join(P.PROCESSED_DIR, 'chunks.jsonl.gz')
+    if not os.path.isfile(path):
+        print('청크가 없다. scripts/06_build_chunks.py 를 먼저.')
+        return 3, []
+
+    t0 = time.time()
+    n = numeric = known = unmarked = 0
+    bad = []
+    with gzip.open(path, 'rt', encoding='utf-8') as f:
+        for line in f:
+            c = json.loads(line)
+            n += 1
+            if c.get('kind') != 'table':
+                continue
+            if (c.get('numeric_ratio') or 0) < 0.2:
+                continue
+            numeric += 1
+            if 'unit_known' not in c:
+                unmarked += 1
+                if len(bad) < 20:
+                    bad.append(c)
+                continue
+            if c['unit_known']:
+                known += 1
+
+    rows = []
+    for c in bad:
+        rows.append(dict(doc_id=c.get('doc_id'), doc_group=c.get('doc_group'),
+                         source_path=c.get('chunk_id'), result='FAIL',
+                         body_same='', header_same='',
+                         detail='숫자 표 청크인데 unit_known 표시가 없다'))
+    print('  청크 %s개 / 숫자 표 %s개' % ('{:,}'.format(n), '{:,}'.format(numeric)))
+    print('    단위 확인됨      %s (%.1f%%)'
+          % ('{:,}'.format(known), 100 * known / max(1, numeric)))
+    print('    단위 없음(표시됨) %s (%.1f%%)  ← 에이전트가 단위 미명시로 답해야 한다'
+          % ('{:,}'.format(numeric - known - unmarked),
+             100 * (numeric - known - unmarked) / max(1, numeric)))
+    print('    표시 누락        %s' % '{:,}'.format(unmarked))
+    print('  청킹 전: 청크 안에 단위 19.7% / 이웃 청크에만 78.9%')
+    print('  %.1fs' % (time.time() - t0))
+    if not rows:
+        rows.append(dict(result='PASS', doc_id='(전체)', doc_group='',
+                         source_path='', body_same='', header_same='',
+                         detail='숫자 표 청크 %s개 전부 unit_known 표시됨'
+                                % '{:,}'.format(numeric)))
+    ok_n = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok_n == len(rows) else 2), rows
+
+
+# ══════════════════════════════════════════════════════════════════════
 # 6. sums — {XBRL} 표의 총계 행 정합
 # ══════════════════════════════════════════════════════════════════════
 
@@ -710,6 +785,7 @@ CHECKS = {
     'grid': check_grid,
     'sums': check_sums,
     'facts': check_facts,
+    'chunks': check_chunks,
 }
 
 FIELDS = ['result', 'doc_id', 'doc_group', 'source_path', 'body_same',
