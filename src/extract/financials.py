@@ -332,9 +332,53 @@ def _norm_label(s):
 # 라벨은 서식마다 조금씩 다르다(수익(매출액) / 매출액 / 영업수익). 그래서
 # 각 항을 **후보 목록**으로 둔다. 하나도 못 찾으면 그 항등식은 건너뛴다 —
 # 없는 걸 실패로 세지 않는다.
+# 라벨 후보는 **실측**으로 뽑았다. unverified 그룹의 행 라벨을 전수
+# 집계해서 실제로 쓰이는 표기를 모았다(추측하지 않았다).
+#
+#   영업활동현금흐름 718 / 영업활동으로인한현금흐름 717   ← 반반이다
+#   기초현금및현금성자산 750 / 기초의현금및현금성자산 564
+#   분기순이익 372 / 반기순이익 153 / 당기순이익 170     ← 보고 주기별
+#
+# 항 하나만 못 찾아도 항등식 전체가 건너뛰어진다. 그래서 후보를 넉넉히 둔다.
+
+_NI = ['당기순이익(손실)', '당기순이익', '분기순이익(손실)', '분기순이익',
+       '반기순이익(손실)', '반기순이익', '당기순손익']
+_PRETAX = ['법인세비용차감전순이익(손실)', '법인세비용차감전순이익',
+           '법인세차감전순이익(손실)', '법인세차감전순이익',
+           '법인세비용차감전계속영업이익(손실)']
+_REVENUE = ['수익(매출액)', '매출액', '영업수익', '수익', '매출',
+            '영업수익(매출액)']
+_OCI = ['기타포괄손익', '분기기타포괄손익', '반기기타포괄손익',
+        '당기기타포괄손익', '세후기타포괄손익']
+_TCI = ['총포괄손익', '총포괄이익', '분기총포괄이익', '반기총포괄이익',
+        '당기총포괄이익', '총포괄손익(손실)', '분기총포괄손익',
+        '반기총포괄손익', '당기총포괄손익']
+_OWNER = ['지배기업의소유주지분', '지배기업소유주지분',
+          '지배기업의소유주에게귀속되는당기순이익(손실)',
+          '지배기업소유주에게귀속되는당기순이익', '지배주주지분']
+_NONCTRL = ['비지배지분', '비지배주주지분']
+
+_CF_OP = ['영업활동현금흐름', '영업활동으로인한현금흐름',
+          '영업활동으로인한순현금흐름', '영업활동순현금흐름']
+_CF_IN = ['투자활동현금흐름', '투자활동으로인한현금흐름',
+          '투자활동으로인한순현금흐름', '투자활동순현금흐름']
+_CF_FI = ['재무활동현금흐름', '재무활동으로인한현금흐름',
+          '재무활동으로인한순현금흐름', '재무활동순현금흐름']
+_CF_NET = ['현금및현금성자산의순증가(감소)', '현금및현금성자산의증가(감소)',
+           '현금및현금성자산의순증감', '현금및현금성자산의증감',
+           '현금및현금성자산의순증가', '현금의증가(감소)']
+_CF_FX = ['현금및현금성자산에대한환율변동효과', '외화표시현금및현금성자산의환율변동효과',
+          '현금및현금성자산의환율변동효과']
+_CF_BEG = ['기초현금및현금성자산', '기초의현금및현금성자산',
+           '기초의현금및현금성자산잔액', '현금및현금성자산의기초잔액']
+_CF_END = ['기말현금및현금성자산', '기말의현금및현금성자산',
+           '기말의현금및현금성자산잔액', '현금및현금성자산의기말잔액']
+_CF_PRE_FX = ['환율변동효과반영전현금및현금성자산의순증가(감소)',
+              '환율변동효과반영전현금및현금성자산의증가(감소)']
+
 LINEAR_CHECKS = {
     'BS': [
-        ('자산총계', ['자산총계'],
+        ('자산총계', ['자산총계', '자산총계(자산)'],
          [(1, ['유동자산']), (1, ['비유동자산'])],
          ['매각예정으로분류된처분집단의자산', '매각예정비유동자산',
           '매각예정으로분류된자산']),
@@ -342,42 +386,51 @@ LINEAR_CHECKS = {
          [(1, ['유동부채']), (1, ['비유동부채'])],
          ['매각예정으로분류된처분집단에포함된부채', '매각예정부채']),
         ('자본총계', ['자본총계'],
-         [(1, ['지배기업의소유주에게귀속되는자본', '지배기업소유주지분']),
-          (1, ['비지배지분'])], []),
-        ('자본과부채총계', ['자본과부채총계', '부채와자본총계', '부채및자본총계'],
+         [(1, ['지배기업의소유주에게귀속되는자본', '지배기업소유주지분',
+                '지배기업의소유주지분']),
+          (1, _NONCTRL)], []),
+        ('자본과부채총계', ['자본과부채총계', '부채와자본총계', '부채및자본총계',
+                            '자본과부채총계(부채와자본총계)'],
          [(1, ['부채총계']), (1, ['자본총계'])], []),
     ],
     'IS': [
-        ('매출총이익', ['매출총이익'],
-         [(1, ['수익(매출액)', '매출액', '영업수익', '수익']),
-          (-1, ['매출원가'])], []),
+        ('매출총이익', ['매출총이익', '매출총이익(손실)'],
+         [(1, _REVENUE), (-1, ['매출원가'])], []),
         ('영업이익', ['영업이익', '영업이익(손실)'],
-         [(1, ['매출총이익']), (-1, ['판매비와관리비'])], []),
-        ('당기순이익', ['당기순이익(손실)', '당기순이익', '분기순이익(손실)',
-                        '반기순이익(손실)'],
-         [(1, ['법인세비용차감전순이익(손실)', '법인세비용차감전순이익',
-                '법인세차감전순이익(손실)']),
-          (-1, ['법인세비용'])], []),
-        ('순이익 귀속', ['당기순이익(손실)', '당기순이익', '분기순이익(손실)',
-                         '반기순이익(손실)'],
-         [(1, ['지배기업의소유주지분', '지배기업소유주지분',
-                '지배기업의소유주에게귀속되는당기순이익(손실)']),
-          (1, ['비지배지분'])], []),
-        ('총포괄손익', ['총포괄손익'],
-         [(1, ['당기순이익(손실)', '당기순이익', '분기순이익(손실)',
-                '반기순이익(손실)']),
-          (1, ['기타포괄손익'])], []),
+         [(1, ['매출총이익', '매출총이익(손실)']),
+          (-1, ['판매비와관리비', '판매비와일반관리비'])], []),
+        ('당기순이익', _NI,
+         [(1, _PRETAX), (-1, ['법인세비용', '법인세비용(수익)'])], []),
+        ('순이익 귀속', _NI, [(1, _OWNER), (1, _NONCTRL)], []),
+        # IS3 = 포괄손익계산서 별표. 매출이 없고 순이익부터 시작한다.
+        # 실측 268개(분기 150 / 반기 61 / 당기 57)가 이 모양이다.
+        ('총포괄손익', _TCI, [(1, _NI), (1, _OCI)], []),
+        # 귀속 행은 '지배기업의소유주지분' 이라는 같은 라벨이 순이익 쪽과
+        # 총포괄 쪽에 **두 번** 나온다. by_label 은 첫 번째만 잡으므로
+        # 맨 라벨을 후보에 넣으면 순이익 귀속을 총포괄 귀속으로 오인한다.
+        # 그래서 '총포괄' 이 명시된 형태만 받는다.
+        ('총포괄손익 귀속', _TCI,
+         [(1, ['총포괄손익,지배기업의소유주에게귀속되는지분',
+                '총포괄손익지배기업의소유주지분',
+                '총포괄손익의귀속지배기업의소유주지분']),
+          (1, ['총포괄손익,비지배지분', '총포괄손익비지배지분'])], []),
     ],
     'CF': [
-        ('환율변동전 순증감', ['환율변동효과반영전현금및현금성자산의순증가(감소)'],
-         [(1, ['영업활동현금흐름']), (1, ['투자활동현금흐름']),
-          (1, ['재무활동현금흐름'])], []),
-        ('현금 순증감', ['현금및현금성자산의순증가(감소)'],
-         [(1, ['환율변동효과반영전현금및현금성자산의순증가(감소)']),
-          (1, ['현금및현금성자산에대한환율변동효과'])], []),
-        ('기말현금', ['기말현금및현금성자산'],
-         [(1, ['기초현금및현금성자산']),
-          (1, ['현금및현금성자산의순증가(감소)'])], []),
+        ('환율변동전 순증감', _CF_PRE_FX,
+         [(1, _CF_OP), (1, _CF_IN), (1, _CF_FI)], []),
+        # 아래 둘은 **대안**이다. 서식에 환율효과 행이 따로 있으면 앞쪽이,
+        # 없으면 뒤쪽이 맞는다. 둘 다 통과해야 한다고 보면 항상 하나가
+        # 틀린다 — alt 로 묶어 하나만 맞으면 통과로 본다.
+        ('현금 순증감', _CF_NET,
+         [(1, _CF_PRE_FX), (1, _CF_FX)], [], 'cf_net'),
+        ('현금 순증감(환율효과 행 없음)', _CF_NET,
+         [(1, _CF_OP), (1, _CF_IN), (1, _CF_FI)], [], 'cf_net'),
+        # 환율효과 행은 있는데 '환율변동효과 반영전' 소계 행이 없는 서식.
+        ('현금 순증감(환율 포함)', _CF_NET,
+         [(1, _CF_OP), (1, _CF_IN), (1, _CF_FI), (1, _CF_FX)], [], 'cf_net'),
+        ('기말현금', _CF_END, [(1, _CF_BEG), (1, _CF_NET)], [], 'cf_end'),
+        ('기말현금(환율 별도합산)', _CF_END,
+         [(1, _CF_BEG), (1, _CF_NET), (1, _CF_FX)], [], 'cf_end'),
     ],
 }
 
@@ -401,7 +454,11 @@ def _linear_checks(group, tolerance=1):
 
     results, bad = [], 0
     ncol = group.get('n_cols') or 0
-    for name, total_names, terms, optional in specs:
+    alt_hits = {}          # (alt그룹, 열) -> 하나라도 맞았나
+    pending = []           # alt 소속 결과는 판정을 미룬다
+    for spec in specs:
+        name, total_names, terms, optional = spec[:4]
+        alt = spec[4] if len(spec) > 4 else None
         tname, trow = _pick(by_label, total_names)
         if trow is None:
             continue
@@ -446,9 +503,7 @@ def _linear_checks(group, tolerance=1):
             hit = next((c for c in cands if abs(c[1] - tv) <= tolerance), None)
             ok = hit is not None
             got = hit[1] if hit else cands[-1][1]
-            if not ok:
-                bad += 1
-            results.append({
+            rec = {
                 'statement': group.get('statement'),
                 'check': '%s: %s = %s' % (
                     name, tname,
@@ -457,7 +512,25 @@ def _linear_checks(group, tolerance=1):
                 'column': ci, 'total': tv, 'sum': got,
                 'diff': got - tv, 'ok': ok,
                 'reading': hit[0] if hit else None,
-            })
+                'alt': alt,
+            }
+            if alt:
+                key = (alt, ci)
+                alt_hits[key] = alt_hits.get(key, False) or ok
+                pending.append((key, rec))
+                continue
+            if not ok:
+                bad += 1
+            results.append(rec)
+
+    # alt 그룹은 열마다 하나라도 맞으면 통과. 그 그룹에서는 맞은 것만 남긴다.
+    for key, rec in pending:
+        if alt_hits.get(key):
+            if rec['ok']:
+                results.append(rec)
+        else:
+            bad += 1
+            results.append(rec)
     return results, bad
 
 
@@ -465,12 +538,19 @@ def _equity_column_checks(group, tolerance=1):
     """자본변동표 — 합계 열 = 나머지 구성요소 열의 합 (행 방향).
 
     EF 는 열이 기간이 아니라 자본 구성요소라 라벨 항등식이 안 통한다.
-    대신 헤더에 '합계' 가 붙은 열이 그 앞의 구성요소 열들의 합이어야 한다.
-    실측 구조:
-        col1..4  자본금 / 자본잉여금 / 기타자본구성요소 / 이익잉여금
-        col5     지배기업의 소유주에게 귀속되는 자본 합계   = col1..4
-        col6     비지배지분
-        col7     자본 합계                                 = col5 + col6
+
+    처음에는 '지배기업의 소유주 귀속 합계' 열을 필수로 요구했는데,
+    **별도재무제표에는 그 열이 없다** — 자회사가 없으니 지배/비지배 구분이
+    존재하지 않는다. 그래서 EF_S 1,020개가 전부 검사를 못 받았다.
+    규칙이 틀린 게 아니라 과하게 엄격했다.
+
+    지금은 이렇게 본다.
+      · 라벨 열   : 헤더가 비어 있는 앞쪽 열들 (행 헤더가 2단인 표가 198개)
+      · 합계 열   : 헤더가 '합계' 로 끝나는 열
+      · 마지막 합계 열 = 나머지 **비합계** 열의 합
+
+    중간 소계(예: 기타불입자본 합계)가 있어도 맞는다 — 소계는 자기 하위
+    항목의 합이므로, 전체를 잎 항목으로 펼쳐 더한 것과 같다.
     """
     if group.get('statement') != 'EF':
         return [], 0
@@ -479,48 +559,41 @@ def _equity_column_checks(group, tolerance=1):
     if not header or not rows:
         return [], 0
 
-    owner_total = None      # 지배기업 소유주 귀속 합계 열
-    grand_total = None      # 자본 합계 열
-    for i, h in enumerate(header):
-        n = _norm_label(h)
-        if not n.endswith('합계'):
-            continue
-        if '비지배' in n:
-            continue
-        if '지배기업의소유주' in n:
-            owner_total = i
-        else:
-            grand_total = i
-    nonctrl = next((i for i, h in enumerate(header)
-                    if _norm_label(h).endswith('비지배지분')), None)
+    # 헤더가 비어 있는 앞쪽 = 행 라벨 열
+    data_start = 0
+    while data_start < len(header) and not _norm_label(header[data_start]):
+        data_start += 1
+    if data_start >= len(header):
+        return [], 0
+
+    totals = [i for i in range(data_start, len(header))
+              if _norm_label(header[i]).endswith('합계')]
+    if not totals:
+        return [], 0
+    grand = totals[-1]
+    parts = [i for i in range(data_start, grand) if i not in set(totals)]
+    if not parts:
+        return [], 0
 
     results, bad = [], 0
-
-    def run(target, parts, name):
-        nonlocal bad
-        if target is None or not parts:
-            return
-        for r in rows:
-            tv = to_number(r[target] if target < len(r) else None)
-            if tv is None:
-                continue
-            vs = [to_number(r[p] if p < len(r) else None) for p in parts]
-            if any(v is None for v in vs):
-                continue
-            got = sum(vs)
-            ok = abs(got - tv) <= tolerance
-            if not ok:
-                bad += 1
-            results.append({
-                'statement': 'EF', 'check': name,
-                'row_label': (r[0] or '')[:40], 'column': target,
-                'total': tv, 'sum': got, 'diff': got - tv, 'ok': ok,
-            })
-
-    if owner_total is not None:
-        run(owner_total, [i for i in range(1, owner_total)], '지배기업 귀속 합계 = 구성요소 합')
-    if grand_total is not None and owner_total is not None and nonctrl is not None:
-        run(grand_total, [owner_total, nonctrl], '자본 합계 = 지배 + 비지배')
+    for r in rows:
+        tv = to_number(r[grand] if grand < len(r) else None)
+        if tv is None:
+            continue
+        vs = [to_number(r[i] if i < len(r) else None) for i in parts]
+        # 빈 칸은 0으로 본다 — 자본변동표는 해당 없는 칸을 비워 둔다.
+        vs = [0 if v is None else v for v in vs]
+        got = sum(vs)
+        ok = abs(got - tv) <= tolerance
+        if not ok:
+            bad += 1
+        results.append({
+            'statement': 'EF',
+            'check': '%s = 구성요소 %d개 열의 합' % (
+                (header[grand] or '합계')[-20:], len(parts)),
+            'row_label': (r[0] or '')[:40], 'column': grand,
+            'total': tv, 'sum': got, 'diff': got - tv, 'ok': ok,
+        })
     return results, bad
 
 
