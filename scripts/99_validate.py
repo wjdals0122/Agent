@@ -10,6 +10,7 @@
     --sums       {XBRL} 표의 총계 행 정합                 (5단계 이후)
     --facts      구조화 팩트가 원문에 근거하는가          (환각 없음)
     --chunks     청크가 자족적인가 (숫자에 단위가 붙는가)
+    --coverage   원문을 빠뜨리지 않았는가 (완전성)
     --all        전부
 
 각 검사는 reports/validate_{name}.csv 를 남긴다. 요약은 진행률이 아니라
@@ -504,6 +505,70 @@ def check_chunks(args):
 
 
 # ══════════════════════════════════════════════════════════════════════
+# 10. coverage — 원문을 빠뜨리지 않았는가 (완전성)
+# ══════════════════════════════════════════════════════════════════════
+
+def check_coverage(args):
+    """`facts` 가 답하지 않는 반대편 질문.
+
+        facts     지어내지 않았는가   (산출물 → 원문)
+        coverage  빠뜨리지 않았는가   (원문 → 산출물)
+
+    PARSING_NOTES 기준으로 본문 손실 검증은 holding·periodic 만
+    실시됐고 exchange·major 는 미실시였다. 네 문서군을 같은 방법으로
+    쟀다. 원자료는 scripts/07_coverage.py 가 만든다.
+
+    판정: 비율만 보면 작은 문서가 토큰 하나 때문에 2%가 되어 억울하게
+    걸린다. 그래서 **비율과 절대 개수를 함께** 본다 — 체계적 손실만
+    잡고 낱개 잡음은 넘긴다.
+    """
+    path = os.path.join(P.REPORTS_DIR, 'coverage.jsonl')
+    if not os.path.isfile(path):
+        print('원자료가 없다. scripts/07_coverage.py --keep-empty 를 먼저.')
+        return 3, []
+
+    max_loss, min_missing = 0.01, 5
+    rows = []
+    import collections
+    by = collections.defaultdict(list)
+    with open(path, encoding='utf-8') as f:
+        for line in f:
+            r = json.loads(line)
+            if r.get('status') != 'ok':
+                continue
+            by[r['doc_group']].append(r['loss'])
+            fail = r['loss'] > max_loss and r['missing'] >= min_missing
+            rows.append(dict(
+                doc_id=r['doc_id'], doc_group=r['doc_group'], source_path='',
+                result='FAIL' if fail else 'PASS',
+                body_same='', header_same='',
+                detail='' if not fail else
+                       '손실 %.2f%% (원문 토큰 %s개 중 %d개 누락): %s'
+                       % (100 * r['loss'], '{:,}'.format(r['source_tokens']),
+                          r['missing'], ', '.join(r.get('samples') or [])[:60])))
+
+    print('  문서군별 평균 손실 (drop_empty 를 끈 기준):')
+    allv = []
+    for g in sorted(by):
+        v = sorted(by[g])
+        allv += v
+        print('    %-10s %5d문서  평균 %.3f%%  최대 %.3f%%'
+              % (g, len(v), 100 * sum(v) / len(v), 100 * v[-1]))
+    if allv:
+        print('    %-10s %5d문서  평균 %.3f%%'
+              % ('전체', len(allv), 100 * sum(allv) / len(allv)))
+    print('  손실로 세지 않는 것: 토큰 경계 차이(파서가 띄우거나 합침),')
+    print('    drop_empty 가 지운 빈 값, SUMMARY/이미지 파일명 등 의도적 제외')
+
+    if not rows:
+        rows.append(dict(result='PASS', doc_id='(전체)', doc_group='',
+                         source_path='', body_same='', header_same='',
+                         detail='검사 대상 0건'))
+    ok = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok == len(rows) else 2), rows
+
+
+# ══════════════════════════════════════════════════════════════════════
 # 6. sums — {XBRL} 표의 총계 행 정합
 # ══════════════════════════════════════════════════════════════════════
 
@@ -786,6 +851,7 @@ CHECKS = {
     'sums': check_sums,
     'facts': check_facts,
     'chunks': check_chunks,
+    'coverage': check_coverage,
 }
 
 FIELDS = ['result', 'doc_id', 'doc_group', 'source_path', 'body_same',
