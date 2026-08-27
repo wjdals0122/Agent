@@ -18,7 +18,12 @@ CHUNKS_DIR = Path(
 )
 CHUNKS_GLOB = "disclosure_chunks_companies_*.jsonl"
 
-VECTORS = ROOT / "data" / "index" / "vectors"
+# 출력도 갈아끼울 수 있어야 한다. 청크를 바꿔 재임베딩할 때 기존 벡터를 덮으면
+# 40문항 실측 기준선과 비교할 대상이 사라진다.
+#   DART_VECTORS_DIR=data/index/vectors_v2 python -m src.index.embed_prepare
+VECTORS = Path(
+    os.environ.get("DART_VECTORS_DIR", ROOT / "data" / "index" / "vectors")
+)
 WORK = VECTORS / "_work"
 # 검증 리포트는 레포 루트 reports/ 로 모은다(scripts/pipeline_paths.py 와 같은 규칙).
 REPORTS = ROOT / "reports"

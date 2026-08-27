@@ -91,11 +91,20 @@ print('불일치', len(bad), '/', len(BASE)); print(bad[:10])
 
 *(2026-08-27 기준: 현재 작업 트리 파서의 md는 기준선과 4,616/4,616 동일하다.)*
 
-### 재임베딩은 기존 벡터를 덮어쓴다
+### 재임베딩은 기본값으로 기존 벡터를 덮어쓴다
 
-`paths.VECTORS`가 `data/index/vectors/`로 고정이다. 입력만 `DART_CHUNKS_DIR`로 바꿔서
-돌리면 61만 벡터와 40문항 실측 기준선(섹션@1 90% / strict@1 91%)이 사라진다.
-A/B 비교를 하려면 출력 경로부터 분리해야 한다.
+입력만 `DART_CHUNKS_DIR`로 바꿔 돌리면 출력은 그대로 `data/index/vectors/`로 가서
+61만 벡터와 40문항 실측 기준선(섹션@1 90% / strict@1 91%)이 사라진다.
+**출력 경로를 반드시 같이 바꾼다:**
+
+```bash
+export DART_CHUNKS_DIR=data/processed/chunks_v2
+export DART_VECTORS_DIR=data/index/vectors_v2
+python -m src.index.embed_prepare && bash scripts/run_embed.sh --max-length 1024 --batch-tokens 16384
+python -m src.index.embed_merge && python -m src.eval.chunk_store --build
+```
+
+`chunk_store --build`도 같은 환경변수를 봐야 한다 — 오프셋 사이드카가 벡터 폴더에 들어간다.
 
 ### `parse_report.jsonl`을 두 단계가 공유한다
 
