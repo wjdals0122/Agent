@@ -57,3 +57,82 @@ Markdown 제목 계층을 기준으로 섹션을 보존하고, 문단·목록은
 임베딩에는 `embedding_text`를 사용하고, 벡터 DB의 표시·인용 원문에는 `content`를 사용합니다. 검색 시 회사명, 종목코드, 공시 유형, 접수번호를 필터 메타데이터로 저장하면 공시 질의의 정확도가 좋아집니다.
 
 실제 임베딩 모델이 정해지면 그 모델의 토크나이저로 `embedding_text` 길이를 다시 검사하는 것이 좋습니다.
+
+
+---
+
+# 2차 — 정정공시 반영 (2026-08-28)
+
+정정사항의 **위치**가 표시되지 않은 공시가 있어서, 원본을 마커 붙여 다시 청킹하고
+정정사항을 따로 청킹해 받았다. XML 이 없어 이 레포가 못 읽던 pdf+html 3건도 여기서 들어왔다.
+
+## 파일
+
+```
+data/processed/chunks_by_10_companies/
+├── disclosure_chunks_companies_001-010.jsonl … 061-070.jsonl   1차 7개 (614,693줄, 그대로)
+├── disclosure_chunks_pdf_docs.jsonl                            2차 1개 (2,687줄)
+├── manifest.json                                               2차 (skipped_doc_ids 포함)
+└── manifest_v1.json                                            1차 (대조용)
+
+corpus/corrections/                                             위 청크의 입력 md 5개
+├── KB금융_periodic_20260313001191_마커.md          3.9MB  원본 + 정정 위치 마커
+├── KB금융_정정사항_20260619000667.md               4.0KB  정정사항 (pdf+html)
+├── 한화오션_periodic_20240513000844_마커.md         681KB  원본 + 정정 위치 마커
+├── 한화오션_정정사항_20240514001522.md              4.0KB  정정사항 (pdf+html)
+└── 한화에어로스페이스_periodic_20260513000860.md    1.3MB  분기보고서 (pdf+html)
+```
+
+`disclosure_chunks_*` 를 정렬하면 `pdf_docs` 가 맨 뒤에 온다(c < p). 1차 7개 파일의
+row 번호가 그대로 유지된다.
+
+## 문서 5건
+
+| doc_id | 회사 | doc_role | source_format | 청크 | 대체 대상 |
+| --- | --- | --- | --- | ---: | --- |
+| `20260313001191-7a4d61dc97` | KB금융 | original | xml | 1,678 | `…-8e06344caf` |
+| `20240513000844-b40f169fc6` | 한화오션 | original | xml | 344 | `…-46bde36967` |
+| `20260513000860-4930c4ae50` | 한화에어로스페이스 | original | **pdf+html** | 657 | — |
+| `20260619000667-2598b34a2b` | KB금융 | correction_delta | **pdf+html** | 4 | — |
+| `20240514001522-fcbf1d25f1` | 한화오션 | correction_delta | **pdf+html** | 4 | — |
+
+`original` 둘은 마커를 붙여 다시 만든 것이라 **옛 버전을 대체한다**. 옛 버전은 1차 파일에
+그대로 남아 있으므로 임베딩 단계에서 걸러야 한다 — `manifest.json` 의 `skipped_doc_ids`
+2건 / 2,802행이 그것이다.
+
+```
+617,380줄  -  2,802(대체됨)  =  614,578행
+```
+
+`embed_prepare` 와 `chunk_store` 가 `paths.skipped_doc_ids()` 로 **같은 규칙**을 쓴다.
+한쪽만 거르면 row 순서가 어긋나 `chunk_store --build` 가 "행 수 불일치"로 죽는다.
+
+## 새 필드
+
+`pdf_docs.jsonl` 만 갖는다. 1차 7개 파일은 옛 스키마 그대로다.
+
+| 필드 | 뜻 |
+| --- | --- |
+| `doc_role` | `original` / `correction_delta` |
+| `is_correction` | 정정공시인가 |
+| `replaces_doc_id` | 이 문서가 대체하는 옛 doc_id |
+| `replaces_source_file` | 그 옛 문서의 md 파일명 |
+| `is_superseded` | **밀려났는가.** 있으면 `_mark_superseded` 휴리스틱보다 우선한다 |
+| `source_format` | `xml` / `pdf+html` |
+| `base_year` · `base_month` | **사업연도.** 접수연도가 아니다 |
+| `corp_code` · `sector` · `doc_subtype` · `report_nm` · `rcept_dt` · `listed_name` | 문서 메타 |
+
+`base_year` 가 특히 중요하다. 옛 스키마에는 없어서 임베딩 인덱스가
+`int(receipt_no[:4])`(접수연도)로 대신 채우고 있다. 전량 재청킹하면 진짜 사업연도로
+연도 필터를 걸 수 있다.
+
+## 검사 결과
+
+```
+python scripts/09_preflight_chunks.py data/processed/chunks_by_10_companies
+
+  [PASS] 필수 6필드 전부 채워짐
+  [PASS] chunk_id 고유 (617,380개)
+  [PASS] chunk_id 구분자 ':'
+  문서 커버리지  4,204 / 4,204   결손 0        ← pdf+html 3건이 여기서 메워졌다
+```

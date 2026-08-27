@@ -41,6 +41,15 @@ def main() -> int:
     files = paths.chunk_files()
     print(f"[prepare] 소스 {len(files)}개 파일", flush=True)
 
+    # 마커 붙은 새 버전으로 대체된 옛 문서. 파일에는 남아 있으므로 여기서 거른다.
+    skip_docs = paths.skipped_doc_ids()
+    skipped_rows = 0
+    if skip_docs:
+        print(f"[prepare] manifest 가 대체됐다고 표시한 doc_id {len(skip_docs)}개 — 건너뛴다",
+              flush=True)
+        for d in sorted(skip_docs):
+            print(f"[prepare]   skip {d}", flush=True)
+
     rows, chunk_ids, embed_texts, n_bytes = [], [], [], []
     doc_ids, corp_codes, doc_groups, base_years, rcept_dts = [], [], [], [], []
     companies, receipt_nos, embed_sha1s = [], [], []
@@ -63,6 +72,10 @@ def main() -> int:
                 except orjson.JSONDecodeError as e:
                     print(f"[prepare] JSON 파싱 실패 {path.name}:{lineno} — {e}", file=sys.stderr)
                     return 2
+
+                if rec.get("doc_id") in skip_docs:
+                    skipped_rows += 1
+                    continue
 
                 missing = [f for f in REQUIRED if f not in rec or rec[f] in (None, "")]
                 if missing:
@@ -100,7 +113,8 @@ def main() -> int:
                 if args.limit and row >= args.limit:
                     stop = True
         file_sha1[path.name] = h.hexdigest()
-        print(f"[prepare] {path.name} 완료 — 누적 {row:,}행 ({time.time() - t0:.1f}s)", flush=True)
+        print(f"[prepare] {path.name} 완료 — 누적 {row:,}행 "
+              f"(건너뜀 {skipped_rows:,}) ({time.time() - t0:.1f}s)", flush=True)
 
     n = row
     if n == 0:
@@ -163,6 +177,9 @@ def main() -> int:
             "rcept_dt": "receipt_no[:8]",
         },
         "limit": args.limit or None,
+        # 무엇을 왜 뺐는지 산출물에 남긴다. 결손은 조용히 넘어가지 않는다.
+        "skipped_doc_ids": sorted(skip_docs),
+        "skipped_rows": skipped_rows,
         "built_at": datetime.now(timezone.utc).isoformat(),
         "prepare_seconds": round(time.time() - t0, 1),
     }

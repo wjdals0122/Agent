@@ -25,8 +25,11 @@ from src.index import paths
 OFFSETS = paths.VECTORS / "text_offsets.npz"
 
 
-def _mark_superseded(row_doc, doc_meta) -> np.ndarray:
+def _mark_superseded(row_doc, doc_meta, explicit=None) -> np.ndarray:
     """정정 재제출로 밀려난 옛 정기보고서의 행을 표시한다.
+
+    청커가 `is_superseded` 를 직접 달아 준 문서는 **그 값을 그대로 믿는다**(explicit).
+    추측보다 청커가 아는 것이 정확하다. 필드가 없는 옛 스키마 문서에만 아래 규칙을 쓴다.
 
     정기보고서는 제목에 기간이 들어 있어서(예: 사업보고서 (2023.12)) 같은 회사·같은 제목이면
     같은 보고서다. 접수번호가 여럿이면 정정 재제출이고 가장 큰 접수번호가 최신본이다.
@@ -35,18 +38,21 @@ def _mark_superseded(row_doc, doc_meta) -> np.ndarray:
     처럼 제목이 같아도 매번 다른 사건이다 (삼성E&A는 이 제목으로 87건을 냈다).
     또 접수번호가 같은데 doc_id가 다른 것은 한 공시가 본문·첨부로 쪼개진 것이니 건드리지 않는다.
     """
+    explicit = explicit or {}
     by_title = {}
     for doc, (comp, title, rcept, group) in doc_meta.items():
-        if group == "periodic":
+        if group == "periodic" and doc not in explicit:
             by_title.setdefault((comp, title), set()).add(rcept)
 
     stale = {
         doc
         for doc, (comp, title, rcept, group) in doc_meta.items()
         if group == "periodic"
+        and doc not in explicit
         and len(by_title.get((comp, title), ())) > 1
         and rcept != max(by_title[(comp, title)])
     }
+    stale |= {doc for doc, flag in explicit.items() if flag}
     return np.fromiter((d in stale for d in row_doc), dtype=bool, count=len(row_doc))
 
 
@@ -58,6 +64,11 @@ def build(verify: bool = True) -> None:
     row_doc: list[str] = []
     doc_meta: dict[str, tuple] = {}
 
+    # embed_prepare 와 **같은 규칙으로** 걸러야 row 순서가 id_map 과 맞는다.
+    skip_docs = paths.skipped_doc_ids()
+    explicit: dict[str, bool] = {}
+    n_skipped = 0
+
     t0 = time.time()
     for fi, path in enumerate(files):
         pos = 0
@@ -66,21 +77,33 @@ def build(verify: bool = True) -> None:
                 start, pos = pos, pos + len(raw)
                 if not raw.strip():
                     continue
-                file_idx.append(fi)
-                offsets.append(start)
                 rec = orjson.loads(raw)
                 doc = rec["chunk_id"].split(":")[0]
+                if rec.get("doc_id") in skip_docs:
+                    n_skipped += 1
+                    continue
+                file_idx.append(fi)
+                offsets.append(start)
                 row_doc.append(doc)
                 if doc not in doc_meta:
                     doc_meta[doc] = (
                         rec.get("company", ""), rec.get("document_title", ""),
                         rec.get("receipt_no", ""), rec.get("disclosure_type", ""),
                     )
+                    if "is_superseded" in rec:
+                        explicit[doc] = bool(rec["is_superseded"])
                 if verify:
                     ids.append(rec["chunk_id"])
         print(f"  {path.name}: 누적 {len(offsets):,}행", flush=True)
 
-    superseded = _mark_superseded(row_doc, doc_meta)
+    if skip_docs:
+        print(f"  manifest 가 대체됐다고 표시한 {len(skip_docs)}개 문서 / "
+              f"{n_skipped:,}행 건너뜀", flush=True)
+    if explicit:
+        print(f"  청커가 is_superseded 를 직접 단 문서 {len(explicit)}개 — 추측 대신 그 값을 쓴다",
+              flush=True)
+
+    superseded = _mark_superseded(row_doc, doc_meta, explicit)
     print(f"  정정 재제출로 밀려난 옛 정기보고서: {int(superseded.sum()):,}행 "
           f"({superseded.mean():.2%})", flush=True)
 

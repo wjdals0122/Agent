@@ -75,7 +75,8 @@ python -m src.eval.ask                     # 대화형
 | 경로 | 크기 | 내용 |
 |------|------|------|
 | `data/index/vectors/` | 6.5GB | `dense.f32.npy` (614,693×1024) · `sparse.npz` · `id_map.parquet` · `_work/` 샤드 |
-| `data/processed/chunks_by_10_companies/` | 3.0GB | 위 벡터의 **입력** 청크 7개 (70개사, 614,693청크) |
+| `data/processed/chunks_by_10_companies/` | 3.0GB | 임베딩 **입력** 청크 8개 (70개사, 617,380줄 → 대체본 2,802 제외 = 614,578) |
+| `corpus/corrections/` | 5.7MB | 정정 위치 마킹 md 5개. pdf+html 문서의 유일한 파싱 결과다 |
 | `data/processed/_archive/` | 282MB | 위 청크의 배포 zip |
 | `data/processed/chunks.jsonl.gz` | 272MB | 이 레포 `06_build_chunks.py` 자체 청킹 산출물 |
 | `data/interim/`, `data/baseline_md/` | ~1.1GB | doc.json, 기준선 md |

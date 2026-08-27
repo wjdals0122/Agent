@@ -14,8 +14,11 @@
     5. doc_id 신규 여부          레포가 아는 문서인가, 새로 부여된 것인가
     6. 문서 커버리지             우리에게 있는데 청크에 없는 문서 = 결손
 
-`data/index/md_files.jsonl` 과 접수번호로 조인해서 대조한다. 그 파일이 없으면
-5·6번은 건너뛴다(`python scripts/05b_build_md_index.py` 로 만든다).
+`data/index/documents.jsonl` 과 접수번호로 조인해서 대조한다(문서 단위 4,204건 —
+XML 이 없는 pdf+html 3건도 여기에 있다). 그 파일이 없으면 5·6번은 건너뛴다.
+
+manifest.json 의 `skipped_doc_ids` 는 커버리지에서 제외한다 — 대체된 옛 문서를
+결손으로 세면 안 된다.
 
 절대 규칙 2: 결손은 조용히 넘어가지 않는다. 못 붙인 것은 목록으로 출력한다.
 """
@@ -39,8 +42,8 @@ REQUIRED = ('chunk_id', 'embedding_text', 'doc_id',
 DISPLAY = ('content', 'company', 'document_title', 'section_path')
 
 
-def load_md_index():
-    path = os.path.join(P.INDEX_DIR, 'md_files.jsonl')
+def load_doc_index():
+    path = os.path.join(P.INDEX_DIR, 'documents.jsonl')
     if not os.path.isfile(path):
         return None
     by_rcept = {}
@@ -49,8 +52,22 @@ def load_md_index():
             if not line.strip():
                 continue
             r = json.loads(line)
-            by_rcept.setdefault(r['receipt_no'], r)
+            by_rcept.setdefault(r['rcept_no'], {
+                'company': r['corp_name'],
+                'disclosure_type': r['doc_group'],
+                'report_nm': r['report_nm'],
+                'status': r['status'],
+            })
     return by_rcept
+
+
+def load_skipped(chunks_dir):
+    """청커가 '대체됐다'고 표시한 doc_id. 결손으로 세면 안 된다."""
+    path = os.path.join(chunks_dir, 'manifest.json')
+    if not os.path.isfile(path):
+        return set()
+    with open(path, encoding='utf-8') as f:
+        return set(json.load(f).get('skipped_doc_ids') or ())
 
 
 def main(argv=None):
@@ -74,7 +91,8 @@ def main(argv=None):
         print('  [%2d] %-52s %10.1f MB'
               % (i, os.path.basename(p), os.path.getsize(p) / 1024 / 1024))
 
-    md = load_md_index()
+    md = load_doc_index()
+    skip_docs = load_skipped(a.chunks_dir)
     n = dup = 0
     missing_fields = collections.Counter()
     missing_display = collections.Counter()
@@ -83,6 +101,7 @@ def main(argv=None):
     dup_samples = []
     bad_samples = collections.defaultdict(list)
     rcept_seen = set()
+    n_skipped_rows = 0
     docid_by_rcept = collections.defaultdict(set)
     stop = False
 
@@ -126,6 +145,10 @@ def main(argv=None):
                         sep['#'] += 1
                     else:
                         sep['(없음)'] += 1
+
+                if rec.get('doc_id') in skip_docs:
+                    n_skipped_rows += 1
+                    continue
 
                 r = str(rec.get('receipt_no') or '')
                 if r:
@@ -173,14 +196,19 @@ def main(argv=None):
 
     if md is None:
         print()
-        print('  data/index/md_files.jsonl 이 없어 5·6번을 건너뛴다.')
-        print('  python scripts/05b_build_md_index.py')
+        print('  data/index/documents.jsonl 이 없어 5·6번을 건너뛴다.')
+        print('  python scripts/05_build_doc_index.py')
         return 0 if ok else 2
 
     print()
     print('=' * 70)
     print('5. doc_id — 레포가 아는 문서인가')
     print('=' * 70)
+    if skip_docs:
+        print('  manifest 가 대체됐다고 표시: %d개 문서 / %s행 — 아래 집계에서 제외'
+              % (len(skip_docs), f'{n_skipped_rows:,}'))
+        for d in sorted(skip_docs):
+            print('     %s' % d)
     known = rcept_seen & set(md)
     unknown = rcept_seen - set(md)
     print('  청크의 접수번호      %s' % f'{len(rcept_seen):,}')
