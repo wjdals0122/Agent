@@ -17,3 +17,28 @@ reports/*.jsonl
 !reports/baseline_correction_*.csv
 
 # baseline/ 은 무시하지 않는다 — 회귀 기준선 해시는 추적해야 기준선이다.
+
+# ── 임베딩 단계 (mirae에서 합친 것) ──────────────────────────────
+# 대용량 산출물은 전부 data/ 아래라 위의 `data/` 한 줄로 이미 제외된다.
+# 무엇이 얼마나 큰지 기록만 남긴다 — 다른 PC에서는 재생성하거나 따로 받아야 한다.
+#   data/index/vectors/            6.5GB  dense/sparse/id_map + _work 샤드
+#   data/processed/chunks_by_10_companies/  3.0GB  임베딩 입력 청크 7개
+#   data/processed/_archive/       282MB  위 청크의 배포 zip
+#   data/processed/chunks.jsonl.gz 272MB  06단계 자체 청킹 산출물
+
+# 실행 로그 — 매 실행마다 새로 쌓인다.
+logs/
+
+# 검색 평가 리포트 — 재실행하면 다시 나온다(건당 수백 KB).
+# 결론은 docs/retrieval_eval_notes.md 에 남긴다.
+reports/retrieval_*
+reports/companies.txt
+
+# 대용량 바이너리 산출물은 경로가 어디든 커밋하지 않는다.
+*.npy
+*.npz
+*.parquet
+*.pkl
+*.pt
+*.pth
+*.zip

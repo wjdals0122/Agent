@@ -1,0 +1,48 @@
+{"id": "e01", "question": "삼성전자의 반도체 부문 주요 제품과 매출 비중은?", "company": "삼성전자", "expect_any": ["주요 제품", "사업의 내용", "매출"], "tags": ["개체혼동", "삼성"]}
+{"id": "e02", "question": "삼성전기의 주요 제품과 매출 비중은?", "company": "삼성전기", "expect_any": ["주요 제품", "사업의 내용", "매출"], "tags": ["개체혼동", "삼성"]}
+{"id": "e03", "question": "삼성중공업의 수주 잔고와 매출 현황은?", "company": "삼성중공업", "expect_any": ["수주", "매출", "사업의 내용"], "tags": ["개체혼동", "삼성"]}
+{"id": "e04", "question": "삼성화재해상보험의 지급여력비율은 얼마인가요?", "company": "삼성화재해상보험", "expect_any": ["지급여력", "자본적정성", "재무", "사업의 내용"], "tags": ["개체혼동", "삼성", "업종특화"]}
+{"id": "e05", "question": "한미반도체의 연구개발 조직과 R&D 비용은?", "company": "한미반도체", "expect_any": ["연구개발"], "tags": ["개체혼동", "한미"]}
+{"id": "e06", "question": "한미약품의 연구개발 조직과 R&D 비용은?", "company": "한미약품", "expect_any": ["연구개발"], "tags": ["개체혼동", "한미"]}
+{"id": "e07", "question": "우리금융지주의 최대주주 현황은?", "company": "우리금융지주", "expect_any": ["최대주주", "주주에 관한 사항"], "tags": ["개체혼동", "우리"]}
+{"id": "e08", "question": "우리기술의 최대주주 현황은?", "company": "우리기술", "expect_any": ["최대주주", "주주에 관한 사항"], "tags": ["개체혼동", "우리"]}
+{"id": "e09", "question": "한화오션의 임원 현황을 알려주세요.", "company": "한화오션", "expect_any": ["임원 및 직원", "임원"], "tags": ["개체혼동", "한화"]}
+{"id": "e10", "question": "한화에어로스페이스의 임원 현황을 알려주세요.", "company": "한화에어로스페이스", "expect_any": ["임원 및 직원", "임원"], "tags": ["개체혼동", "한화"]}
+{"id": "e11", "question": "HD현대중공업의 계열회사 현황은?", "company": "HD현대중공업", "expect_any": ["계열회사"], "tags": ["개체혼동", "현대"]}
+{"id": "e12", "question": "현대건설의 계열회사 현황은?", "company": "현대건설", "expect_any": ["계열회사"], "tags": ["개체혼동", "현대"]}
+{"id": "s01", "question": "삼성전자의 주주환원 정책은 어떻게 되나요?", "company": "삼성전자", "expect_any": ["배당에 관한 사항"], "tags": ["섹션정밀"]}
+{"id": "s02", "question": "카카오의 최대주주는 누구이고 지분율은 얼마인가요?", "company": "카카오", "expect_any": ["최대주주", "주주에 관한 사항"], "tags": ["섹션정밀"]}
+{"id": "s03", "question": "현대자동차가 영위하는 주요 사업의 내용은 무엇인가요?", "company": "현대자동차", "expect_any": ["사업의 내용"], "tags": ["섹션정밀"]}
+{"id": "s04", "question": "NAVER의 연구개발 활동과 R&D 비용 규모를 알려주세요.", "company": "NAVER", "expect_any": ["연구개발"], "tags": ["섹션정밀"]}
+{"id": "s05", "question": "기아의 등기임원 보수 지급 현황을 알려주세요.", "company": "기아", "expect_any": ["임원 및 직원", "보수"], "tags": ["섹션정밀"]}
+{"id": "s06", "question": "POSCO홀딩스의 계열회사 현황은 어떻게 되나요?", "company": "POSCO홀딩스", "expect_any": ["계열회사"], "tags": ["섹션정밀"]}
+{"id": "s07", "question": "셀트리온의 이사회 구성과 사외이사 현황은?", "company": "셀트리온", "expect_any": ["이사회", "기업지배구조", "임원"], "tags": ["섹션정밀"]}
+{"id": "s08", "question": "SK텔레콤이 받은 제재 현황이 있나요?", "company": "SK텔레콤", "expect_any": ["제재", "우발", "소송"], "tags": ["섹션정밀"]}
+{"id": "s09", "question": "LG에너지솔루션의 생산설비와 가동률은?", "company": "LG에너지솔루션", "expect_any": ["생산", "설비", "가동률", "사업의 내용"], "tags": ["섹션정밀"]}
+{"id": "s10", "question": "아모레퍼시픽의 원재료 조달 현황은?", "company": "아모레퍼시픽", "expect_any": ["원재료", "매입", "사업의 내용"], "tags": ["섹션정밀"]}
+{"id": "s11", "question": "내부회계관리제도에 대한 감사인의 의견은 어떠한가요?", "company": null, "expect_any": ["내부통제", "내부회계", "감사"], "tags": ["섹션정밀", "회사무관"]}
+{"id": "s12", "question": "감사인의 감사의견과 강조사항은 무엇인가요?", "company": null, "expect_any": ["감사"], "tags": ["섹션정밀", "회사무관"]}
+{"id": "n01", "question": "SK하이닉스의 최근 사업연도 매출액과 영업이익은 얼마인가요?", "company": "SK하이닉스", "expect_any": ["손익계산서", "재무", "경영진단", "요약재무"], "tags": ["숫자"]}
+{"id": "n02", "question": "이마트의 점포 수와 영업 면적은 어떻게 되나요?", "company": "이마트", "expect_any": ["사업의 내용", "영업", "점포", "설비"], "tags": ["숫자"]}
+{"id": "n03", "question": "하나금융지주의 BIS 자기자본비율은 얼마인가요?", "company": "하나금융지주", "expect_any": ["자본적정성", "BIS", "재무", "사업의 내용"], "tags": ["숫자", "업종특화"]}
+{"id": "n04", "question": "미래에셋증권의 우발부채 및 약정사항은 무엇인가요?", "company": "미래에셋증권", "expect_any": ["우발", "약정", "주석"], "tags": ["숫자", "주석"]}
+{"id": "n05", "question": "직원 평균 근속연수와 1인 평균 급여액은?", "company": null, "expect_any": ["임원 및 직원", "직원"], "tags": ["숫자", "회사무관"]}
+{"id": "n06", "question": "현대모비스의 현금흐름표상 영업활동 현금흐름은?", "company": "현대모비스", "expect_any": ["현금흐름표", "재무제표", "재무"], "tags": ["숫자"]}
+{"id": "d01", "question": "두산로보틱스의 유상증자 결정 내용과 자금 사용 목적은?", "company": "두산로보틱스", "expect_any": ["유상증자"], "tags": ["이벤트"]}
+{"id": "d02", "question": "고려아연의 자기주식 취득 결정 내용은?", "company": "고려아연", "expect_any": ["자기주식"], "tags": ["이벤트"]}
+{"id": "d03", "question": "하이브의 타법인 주식 및 출자증권 취득결정 내역은?", "company": "하이브", "expect_any": ["타법인", "출자증권"], "tags": ["이벤트"]}
+{"id": "d04", "question": "크래프톤에 대한 주식등의 대량보유상황보고서 내용은?", "company": "크래프톤", "expect_any": ["대량보유", "주식등의"], "tags": ["이벤트"]}
+{"id": "d05", "question": "에코프로비엠의 현금 배당 결정 공시 내용은?", "company": "에코프로비엠", "expect_any": ["배당"], "tags": ["이벤트"]}
+{"id": "g01", "question": "유상증자를 결정한 이유와 자금 사용 목적은 무엇인가요?", "company": null, "expect_any": ["유상증자"], "tags": ["회사무관", "이벤트"]}
+{"id": "g02", "question": "자기주식 취득 결정의 목적과 취득 예정 금액은?", "company": null, "expect_any": ["자기주식"], "tags": ["회사무관", "이벤트"]}
+{"id": "g03", "question": "배당기준일과 배당금 지급 예정일은 언제인가요?", "company": null, "expect_any": ["배당"], "tags": ["회사무관", "숫자"]}
+{"id": "g04", "question": "환율 변동이 회사 실적에 미치는 영향은?", "company": null, "expect_any": ["위험", "환율", "파생", "경영진단"], "tags": ["회사무관", "정성"]}
+{"id": "g05", "question": "주식매수선택권(스톡옵션) 부여 현황은?", "company": null, "expect_any": ["주식매수선택권", "임원 및 직원"], "tags": ["회사무관"]}
+{"id": "c01", "question": "삼성전자와 SK하이닉스의 최근 매출액을 비교해줘", "expect_companies": ["삼성전자", "SK하이닉스"], "expect_any": ["손익계산서", "재무", "매출", "경영진단"], "tags": ["비교", "숫자"]}
+{"id": "c02", "question": "현대자동차와 기아의 임원 보수를 비교해주세요", "expect_companies": ["현대자동차", "기아"], "expect_any": ["임원 및 직원", "보수"], "tags": ["비교", "숫자"]}
+{"id": "c03", "question": "LG에너지솔루션과 삼성SDI의 생산능력 차이는?", "expect_companies": ["LG에너지솔루션", "삼성SDI"], "expect_any": ["생산", "설비", "사업의 내용"], "tags": ["비교"]}
+{"id": "c04", "question": "카카오와 NAVER의 연구개발비를 비교하면?", "expect_companies": ["카카오", "NAVER"], "expect_any": ["연구개발"], "tags": ["비교", "숫자"]}
+{"id": "c05", "question": "삼성전자, SK하이닉스, 삼성SDI의 배당 정책을 비교해줘", "expect_companies": ["삼성전자", "SK하이닉스", "삼성SDI"], "expect_any": ["배당"], "tags": ["비교", "3개체"]}
+{"id": "c06", "question": "한미반도체와 한미약품의 연구개발비를 비교하면?", "expect_companies": ["한미반도체", "한미약품"], "expect_any": ["연구개발"], "tags": ["비교", "개체혼동"]}
+{"id": "c07", "question": "KB금융과 하나금융지주의 BIS 자기자본비율을 비교해줘", "expect_companies": ["KB금융", "하나금융지주"], "expect_any": ["자본적정성", "BIS", "재무", "사업의 내용"], "tags": ["비교", "업종특화"]}
+{"id": "c08", "question": "HD현대중공업과 한화오션의 수주 잔고를 비교해주세요", "expect_companies": ["HD현대중공업", "한화오션"], "expect_any": ["수주", "매출", "사업의 내용"], "tags": ["비교"]}
