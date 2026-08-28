@@ -193,3 +193,23 @@ Q: 한화에어로스페이스 2026년 1분기 분기보고서 요약재무정�
 
 정정공시·pdf 문서를 겨냥한 질문을 `src/eval/questions.jsonl` 에 추가해야 이 변화가
 지표로 잡힌다. **지금 48문항으로는 측정되지 않는다.**
+
+### 정본 승격 (2026-08-28)
+
+A/B 가 끝나 비교 기준으로서의 역할이 끝났으므로 v2 를 정본으로 올리고 옛 인덱스를 지웠다.
+
+```
+data/index/vectors/          614,578행. 이제 DART_VECTORS_DIR 없이 그냥 쓴다
+data/index/vectors_v1_old/   삭제 (6.5GB)
+vectors/_work/dense.shard*   삭제 (3.8GB) — 머지·검증이 끝나 다시 쓸 일이 없다
+```
+
+`_work/embed_texts.parquet`(240MB)은 남겼다. 재임베딩 없이 다시 머지하거나
+`verify_vectors` 를 돌릴 때 쓴다.
+
+```
+13GB  →  2.9GB
+```
+
+승격 후 무결성 재확인: dense (614578, 1024) · sparse nnz 102,744,812 ·
+id_map 614,578 · text_offsets 614,578 — 전부 일치. 환경변수 없이 질의 정상 동작.
