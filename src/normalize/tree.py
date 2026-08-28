@@ -25,11 +25,20 @@ LIBRARY 컨테이너를 정확히 통과한다 — 문서 순회의 마지막 ca
 순회 도달 개수.
 """
 
-__all__ = ['Node', 'CELL_TAGS', 'SECTION_TAGS', 'IGNORE',
+__all__ = ['Node', 'CELL_TAGS', 'SECTION_TAGS', 'IGNORE', 'CONTAINER_TAGS',
            'walk', 'text', 'para_text', 'own_nodes', 'own_tables', 'find',
            'in_thead', 'tag_text']
 
 CELL_TAGS = ('TD', 'TE', 'TU', 'TH')
+
+# 순회가 **반드시 통과해야 하는** 컨테이너. 이 목록을 코드가 조건문으로
+# 쓰지는 않는다 — walk() 는 태그를 알든 모르든 무조건 내려가기 때문이다.
+# 그런데도 이름을 적어 두는 이유는 하나다: `grep -rn LIBRARY src/` 가
+# **순회 코드에 걸리게** 하려고. E4 의 위험은 순회를 "아는 태그만 내려간다"로
+# 바꾸는 리팩터링이고, 그때 지워지는 줄에는 LIBRARY 라는 말이 없어서
+# 바꾼 사람이 자기가 무엇을 껐는지 알 수 없다(실측 컨테이너 29,339개).
+# 검증: 99_validate.py --structure 의 전수 대조 + LIBRARY 성질검사.
+CONTAINER_TAGS = ('LIBRARY', 'BODY', 'TABLE-GROUP', 'DOCUMENT')
 
 SECTION_TAGS = {'SECTION-1': 2, 'SECTION-2': 3, 'SECTION-3': 4,
                 'SECTION-4': 5}

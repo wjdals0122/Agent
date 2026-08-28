@@ -58,7 +58,7 @@ def _one(fn):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description='doc.json → 청크')
-    ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 4) - 1))
+    ap.add_argument('--jobs', type=int, default=min(61, max(1, (os.cpu_count() or 4) - 1)))  # 61: 윈도우 ProcessPoolExecutor 상한
     ap.add_argument('--limit', type=int, default=0)
     a = ap.parse_args(argv)
 
@@ -76,6 +76,8 @@ def main(argv=None):
     n = 0
     by_kind = {}
     unit_have = unit_miss = 0
+    foot_chunks = foot_notes = 0        # E6 각주 귀속
+    period_chunks = period_labels = 0   # E7 기수→날짜
     chars = 0
     conf = {}
     tmp = OUT + '.tmp'
@@ -96,6 +98,12 @@ def main(argv=None):
                         unit_have += 1
                     else:
                         unit_miss += 1
+                if r.get('footnotes'):
+                    foot_chunks += 1
+                    foot_notes += len(r['footnotes'])
+                if r.get('period_dates'):
+                    period_chunks += 1
+                    period_labels += len(r['period_dates'])
                 c = r.get('parse_confidence')
                 if c:
                     conf[c] = conf.get(c, 0) + 1
@@ -113,6 +121,13 @@ def main(argv=None):
         'numeric_tables_with_unit': unit_have,
         'unit_coverage': round(unit_have / max(1, numeric), 4),
         'parse_confidence': conf,
+        # E6 — 각주를 앞 표 조각에 붙인 결과. 안 붙인 각주는 문단 조각으로
+        # 남는다(양옆에 진짜 표가 없는 45.2%).
+        'footnote_chunks': foot_chunks,
+        'footnotes_attached': foot_notes,
+        # E7 — 기수에 날짜가 붙은 조각. 못 이은 기수는 라벨만 남는다.
+        'period_dated_chunks': period_chunks,
+        'period_dated_labels': period_labels,
         'elapsed_sec': round(time.time() - t0, 1),
     }
     with open(STATS, 'w', encoding='utf-8') as f:
@@ -128,6 +143,10 @@ def main(argv=None):
     print('숫자 표 청크 %s개 중 단위 보유 %s개 (%.1f%%)'
           % ('{:,}'.format(numeric), '{:,}'.format(unit_have),
              100 * stats['unit_coverage']))
+    print('각주가 붙은 표 청크 %s개 (각주 %s건) — E6'
+          % ('{:,}'.format(foot_chunks), '{:,}'.format(foot_notes)))
+    print('기수에 날짜가 붙은 청크 %s개 (라벨 %s건) — E7'
+          % ('{:,}'.format(period_chunks), '{:,}'.format(period_labels)))
     if conf:
         print('parse_confidence 물려받은 청크: %s' % conf)
     print('')

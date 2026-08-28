@@ -7,10 +7,14 @@
     --encoding   문서별 한글 음절 비율 >= 5%
     --structure  //SECTION-2 개수 = 순회 도달 개수
     --grid       표별 열 수 단일값 (ragged 0)
+    --captions   E6 단위/각주 귀속이 규칙대로인가          (table stage)
+    --periods    E7 기수→날짜가 원문에 실제로 있는가       (parse stage)
+    --keys       E8 4튜플 키가 실제로 유일한가             (parse stage)
     --sums       {XBRL} 표의 총계 행 정합                 (5단계 이후)
     --facts      구조화 팩트가 원문에 근거하는가          (환각 없음)
     --chunks     청크가 자족적인가 (숫자에 단위가 붙는가)
     --coverage   원문을 빠뜨리지 않았는가 (완전성)
+    --index      문서 메타 인덱스가 값을 지어내지 않았는가
     --all        전부
 
 각 검사는 reports/validate_{name}.csv 를 남긴다. 요약은 진행률이 아니라
@@ -54,6 +58,12 @@ def _load_freezer():
     return mod
 
 
+# E7 검증용 — 원문에 실제로 있는 날짜인지 대조할 때 쓴다.
+# extract/periods.py 의 RE_DATE 와 같은 모양이어야 한다.
+_RE_DATE_DIGITS = re.compile(
+    r'(\d{4})[.\-/년]\s*(\d{1,2})[.\-/월]\s*(\d{1,2})')
+
+
 def _write_csv(name, fieldnames, rows):
     P.ensure_dirs(P.REPORTS_DIR)
     path = os.path.join(P.REPORTS_DIR, 'validate_%s.csv' % name)
@@ -84,7 +94,7 @@ def check_baseline(args):
     with open(P.BASELINE_INDEX, encoding='utf-8') as f:
         for line in f:
             r = json.loads(line)
-            frozen[r['source_path']] = r
+            frozen[P.nfc(r['source_path'])] = r
     print('베이스라인 %d건 로드' % len(frozen))
 
     fz = _load_freezer()
@@ -109,7 +119,7 @@ def check_baseline(args):
 
     rows = []
     for rec in now:
-        sp = rec['source_path']
+        sp = P.nfc(rec['source_path'])
         old = frozen.get(sp)
         if old is None:
             rows.append(dict(source_path=sp, doc_id=rec.get('doc_id'),
@@ -770,7 +780,76 @@ def check_structure(args):
         return (False,
                 '//SECTION-2 %d개인데 순회 도달 %d개 (유실 %d, LIBRARY %d)'
                 % (a, b, a - b, d.get('library_nodes', 0)))
-    return _diag_check(args, 'structure', one)
+    code, rows = _diag_check(args, 'structure', one)
+    prop_ok, prop_detail = _library_property_test()
+    rows.append(dict(doc_id='(LIBRARY 성질검사)', doc_group='', source_path='',
+                     result='PASS' if prop_ok else 'FAIL',
+                     body_same='', header_same='', detail=prop_detail))
+    print('  LIBRARY 성질검사: %s' % prop_detail)
+    ok = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok == len(rows) else 2), rows
+
+
+def _library_property_test():
+    """순회가 LIBRARY 컨테이너를 **통과**하는가 — 코퍼스 없이도 잡는다.
+
+    전수 검사(위)는 doc.json 이 있어야 돌고 5.5GB 를 한 번 훑어야 한다.
+    이 검사는 트리 세 개를 손으로 만들어 즉시 답한다. 누가 `walk` 를
+    "모르는 태그는 건너뛴다"로 바꾸면 **여기서 먼저** 빨간불이 켜진다.
+
+    같이 재는 것: 직속 자식만 보는 순회는 몇 개를 잃는가. 명세가 경고한
+    30% 유실이 어디서 오는지를 숫자로 남겨 둔다.
+    """
+    sys.path.insert(0, os.path.join(P.REPO_ROOT, 'src'))
+    from normalize import tree as T
+
+    def node(tag, parent=None):
+        n = T.Node(tag, {}, parent)
+        if parent is not None:
+            parent.children.append(n)
+        return n
+
+    cases = {}
+
+    # ① LIBRARY 가 한 겹 낀 실제 모양
+    root = node('DOCUMENT')
+    s1 = node('SECTION-1', root)
+    lib = node('LIBRARY', s1)
+    for _ in range(3):
+        node('SECTION-2', lib)
+    cases['LIBRARY 1겹'] = (root, 3)
+
+    # ② LIBRARY 안에 또 LIBRARY (실측에 있다)
+    root2 = node('DOCUMENT')
+    s1b = node('SECTION-1', root2)
+    l1 = node('LIBRARY', s1b)
+    l2 = node('LIBRARY', l1)
+    node('SECTION-2', l1)
+    node('SECTION-2', l2)
+    cases['LIBRARY 2겹'] = (root2, 2)
+
+    # ③ 이름을 모르는 컨테이너 (앞으로 생길 태그)
+    root3 = node('DOCUMENT')
+    unk = node('SOME-NEW-CONTAINER', node('SECTION-1', root3))
+    node('SECTION-2', unk)
+    cases['모르는 컨테이너'] = (root3, 1)
+
+    bad = []
+    direct_lost = 0
+    total = 0
+    for name, (r, want) in cases.items():
+        got = sum(1 for n in T.walk(r) if n.tag == 'SECTION-2')
+        if got != want:
+            bad.append('%s: 도달 %d != 기대 %d' % (name, got, want))
+        # 직속 자식만 보는 순회였다면 몇 개를 잃는가
+        direct = sum(1 for s1_ in r.children
+                     for c in s1_.children if c.tag == 'SECTION-2')
+        total += want
+        direct_lost += want - direct
+    if bad:
+        return False, '; '.join(bad)
+    return True, ('컨테이너 %d종 전부 도달 (직속 자식 순회였다면 %d/%d 유실)'
+                  % (len(cases), direct_lost, total))
 
 
 def _grid_one(d, group, part):
@@ -841,6 +920,359 @@ def check_grid(args):
 
 
 
+
+# ══════════════════════════════════════════════════════════════════════
+# 11. captions — E6 단위/각주 귀속이 규칙대로인가
+# ══════════════════════════════════════════════════════════════════════
+
+def check_captions(args):
+    """table stage 가 정한 귀속이 정책과 어긋나지 않는가.
+
+    E6 의 위험은 "안 붙이는 것"이 아니라 **없는 귀속을 만들어내는 것**이다.
+    각주 캡션의 45.2%는 양옆 어디에도 진짜 표가 없다(1단계 실측). 그걸
+    무조건 앞 표에 붙이면 남의 표 각주가 된다. 그래서 두 가지를 본다.
+
+      · 붙인 수가 캡션 수를 넘지 않는가, 대상 표 색인이 실재하는가
+      · 캡션은 **진짜 표가 아닌 표**에서만 나왔는가 (E5 와의 정합)
+
+    규칙 자체(어느 쪽에 붙이는가)는 코퍼스 없이 성질검사로 못 박는다.
+    """
+    def one(d, group, part):
+        c = d.get('captions')
+        if c is None:
+            return None
+        bad = []
+        if c['unit_attached'] > c['unit'] or c['footnote_attached'] > c['footnote']:
+            bad.append('붙인 수가 캡션 수보다 많다')
+        if c['attach'] != c['unit_attached'] + c['footnote_attached']:
+            bad.append('attach 목록 %d != 붙인 수 %d'
+                       % (c['attach'], c['unit_attached'] + c['footnote_attached']))
+        if c['not_a_table'] > c['tables']:
+            bad.append('표 아님 %d > 전체 표 %d' % (c['not_a_table'], c['tables']))
+        if c['unit'] + c['footnote'] > c['not_a_table']:
+            bad.append('캡션 %d > 표 아님 %d — 진짜 표를 캡션으로 봤다'
+                       % (c['unit'] + c['footnote'], c['not_a_table']))
+        tb = (part.get('doc') or {}).get('tables') or {}
+        n = tb.get('n_tables', 0)
+        for a in (tb.get('attach') or []):
+            if a['dir'] not in ('next', 'prev'):
+                bad.append('방향 %r' % a['dir'])
+                break
+            if a['to'] == a['i'] or not (0 <= a['to'] < n) or not (0 <= a['i'] < n):
+                bad.append('대상 색인이 이상하다 (i=%s to=%s / 표 %d개)'
+                           % (a['i'], a['to'], n))
+                break
+            fwd = a['dir'] == 'next'
+            if (fwd and a['to'] <= a['i']) or (not fwd and a['to'] >= a['i']):
+                bad.append('방향과 색인이 어긋난다 (i=%s to=%s dir=%s)'
+                           % (a['i'], a['to'], a['dir']))
+                break
+        return (not bad, '; '.join(bad))
+
+    code, rows = _diag_check(args, 'captions', one)
+    prop_ok, prop_detail = _attach_property_test()
+    rows.append(dict(doc_id='(귀속 규칙 성질검사)', doc_group='', source_path='',
+                     result='PASS' if prop_ok else 'FAIL',
+                     body_same='', header_same='', detail=prop_detail))
+    print('  귀속 규칙 성질검사: %s' % prop_detail)
+    ok = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok == len(rows) else 2), rows
+
+
+def _attach_property_test():
+    """귀속 규칙표를 그대로 검사한다. 실측이 정한 답이 코드에 남아 있는가.
+
+    단위  뒤에만 54.8% / 앞에만 0.2%  → 다음 형제 우선, 없으면 이전
+    각주  앞에만 31.8% / 뒤에만 10.0% → 이전 형제 우선, 없으면 다음
+    둘 다 **양옆에 진짜 표가 없으면 붙이지 않는다** (각주의 45.2%)
+    """
+    sys.path.insert(0, os.path.join(P.REPO_ROOT, 'src'))
+    from normalize import table_router as R
+
+    cases = [
+        # kind,       prev,  next,  기대
+        ('unit',      False, True,  'next'),
+        ('unit',      True,  False, 'prev'),
+        ('unit',      True,  True,  'next'),
+        ('unit',      False, False, None),
+        ('footnote',  True,  False, 'prev'),
+        ('footnote',  False, True,  'next'),
+        ('footnote',  True,  True,  'prev'),
+        ('footnote',  False, False, None),
+    ]
+    bad = []
+    for kind, pr, nx, want in cases:
+        got = R.attach_direction(kind, pr, nx)
+        if got != want:
+            bad.append('%s(prev=%s,next=%s) -> %r (기대 %r)'
+                       % (kind, pr, nx, got, want))
+    for text, want in (('(단위 : 천원)', 'unit'), ('(단위: 백만원, %)', 'unit'),
+                       ('※ 상기 금액은 …', 'footnote'), ('＊ 주석', 'footnote'),
+                       ('그냥 문단이다', None), ('금액에 단위 표시 없음', None)):
+        got = R.caption_kind(text)
+        if got != want:
+            bad.append('caption_kind(%r) -> %r (기대 %r)' % (text, got, want))
+    if bad:
+        return False, '; '.join(bad)
+    return True, '귀속 규칙 %d개 + 캡션 판정 6개 전부 일치' % len(cases)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 12. periods — E7 기수→날짜가 원문에 실제로 있는가
+# ══════════════════════════════════════════════════════════════════════
+
+def check_periods(args):
+    """이은 날짜가 **그 문서 안에 실제로 있는 날짜**인가.
+
+    facts 검사와 같은 질문이다 — 지어내지 않았는가. 기수→날짜는 문서
+    안에서만 이어야 하고(회사 결산월 같은 문서 밖 지식으로 채우면 안 된다),
+    이 검사가 그 규칙을 지킨다.
+
+    답하지 않는 질문: 그 날짜가 **옳은** 기수에 붙었는가. 그건 표본으로
+    사람이 볼 일이고, 여기서는 근거 없는 날짜가 생기지 않았는지만 본다.
+    """
+    if not _need_docs():
+        return 3, []
+
+    rows = []
+    t0 = time.time()
+    n_lab = n_res = n_doc = 0
+    for doc_id, group, part in _iter_parts(args):
+        doc = part.get('doc') or {}
+        per = doc.get('periods')
+        if not per:
+            continue
+        n_doc += 1
+        n_lab += per['n_labels']
+        n_res += per['n_resolved']
+        if not per['map']:
+            continue
+        body = ' '.join(sorted(_chunk_value_set(doc)))
+        have = set('%04d%02d%02d' % (int(y), int(m), int(d))
+                   for y, m, d in _RE_DATE_DIGITS.findall(body))
+        miss = []
+        for lab, rec in per['map'].items():
+            for key in ('date', 'start', 'end'):
+                v = rec.get(key)
+                if v and v.replace('-', '') not in have:
+                    miss.append('%s->%s' % (lab, v))
+        if miss:
+            rows.append(dict(
+                doc_id=doc_id, doc_group=group,
+                source_path=part.get('source_path'), result='FAIL',
+                body_same='', header_same='',
+                detail='원문에 없는 날짜 %d건: %s'
+                       % (len(miss), ' / '.join(miss[:3]))))
+        else:
+            rows.append(dict(doc_id=doc_id, doc_group=group,
+                             source_path=part.get('source_path'),
+                             result='PASS', body_same='', header_same='',
+                             detail=''))
+
+    print('  기수 표기 %s건 / 날짜를 이은 라벨 %s개 / part %s개 / %.1fs'
+          % ('{:,}'.format(n_lab), '{:,}'.format(n_res),
+             '{:,}'.format(n_doc), time.time() - t0))
+    print('  못 이은 기수는 라벨만 남는다 — 문서 밖에서 날짜를 끌어오지 않는다.')
+    if not rows:
+        rows.append(dict(result='PASS', doc_id='(전체)', doc_group='',
+                         source_path='', body_same='', header_same='',
+                         detail='기수 표기 0건'))
+    ok = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok == len(rows) else 2), rows
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 13. keys — E8 4튜플 키가 실제로 유일한가
+# ══════════════════════════════════════════════════════════════════════
+
+def check_keys(args):
+    """ACODE 팩트의 키가 한 건도 안 겹치는가.
+
+    1단계 census 는 코퍼스 전체에서 한 번 쟀다 —
+    `(table_idx,row_idx,acode)` 27.45% 유실, 열을 넣으면 0.00%.
+    그 측정은 census 스크립트 안에만 있어서 추출기를 고쳐도 다시 울리지
+    않는다. 이 검사는 **추출한 자리에서 문서마다** 다시 센 값을 본다.
+    키가 겹치는 순간 그 문서가 FAIL 로 뜬다.
+
+    3튜플 유실률도 같이 보고한다 — 왜 열을 넣었는지가 리포트에 남아야
+    나중에 "3튜플로 줄이자"는 말이 다시 나오지 않는다.
+    """
+    def one(d, group, part):
+        a = d.get('acode')
+        if not a:
+            return None
+        if a['unique_4tuple'] != a['facts']:
+            return (False, '팩트 %d개인데 4튜플 키 %d개 — %d건이 겹친다'
+                    % (a['facts'], a['unique_4tuple'],
+                       a['facts'] - a['unique_4tuple']))
+        return (True, '')
+
+    code, rows = _diag_check(args, 'keys', one)
+
+    tot = t3 = t4 = rep = 0
+    for doc_id, group, part in _iter_parts(args):
+        a = ((part.get('doc') or {}).get('diagnostics') or {}).get('acode')
+        if not a:
+            continue
+        tot += a['facts']
+        t3 += a['unique_3tuple']
+        t4 += a['unique_4tuple']
+        rep += a['same_row_repeat']
+    if tot:
+        print('  팩트 %s개 — 4튜플 %s개(유실 %.2f%%) / 3튜플 %s개(유실 %.2f%%)'
+              % ('{:,}'.format(tot), '{:,}'.format(t4),
+                 100 * (tot - t4) / tot, '{:,}'.format(t3),
+                 100 * (tot - t3) / tot))
+        print('  같은 행에서 같은 ACODE 되풀이 %s건 — 3튜플 유실의 원인이다'
+              % '{:,}'.format(rep))
+        if rep == 0:
+            # ★ 이 0 을 "열 번호는 필요 없었다"로 읽으면 안 된다.
+            # 1단계 census 의 27.45% 는 **코퍼스 전량**(TE 7,635,332개) 기준이고
+            # 그 반복은 periodic 에 몰려 있다(표본 실측 42.7%). 지금 acode 추출
+            # 대상은 major/holding 뿐이라(정기공시 주석표는 구조화하지 않는다)
+            # 그 구간이 통째로 빠져 있을 뿐이다. 추출 범위가 periodic 으로
+            # 넓어지는 순간 3튜플은 다시 4분의 1을 잃는다.
+            print('  ⓘ 지금 추출 대상은 major/holding 뿐이다. census 가 잰 3튜플')
+            print('    27.45% 유실은 periodic 에 몰려 있고(표본 42.7%), 그 구간은')
+            print('    아직 구조화 대상이 아니다 — 열 번호는 그때를 위한 것이다.')
+        rows.append(dict(doc_id='(3튜플 대조)', doc_group='', source_path='',
+                         result='PASS', body_same='', header_same='',
+                         detail='4튜플 유실 %.2f%% / 3튜플이었다면 %.2f%%'
+                                % (100 * (tot - t4) / tot,
+                                   100 * (tot - t3) / tot)))
+    ok = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok == len(rows) else 2), rows
+
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 14. index — 문서 메타 인덱스가 값을 지어내지 않았는가
+# ══════════════════════════════════════════════════════════════════════
+
+def check_index(args):
+    """`data/index/documents.jsonl` 의 모든 값이 출처와 일치하는가.
+
+    이 인덱스는 manifest 와 doc.json 을 조인해 얇게 편 것이다. 값을 새로
+    만들면 안 된다 — 만드는 순간 같은 사실이 두 벌이 되고, 둘은 반드시
+    갈라진다. facts 검사와 같은 질문을 인덱스에 던진다.
+
+    보는 것
+      · manifest 유래 필드가 manifest 와 **글자 그대로** 같은가
+      · 목차의 각 마디가 doc.json 에 실제 h2 제목으로 있는가
+      · 기수 사전의 각 값이 doc.json 의 periods 에 실제로 있는가
+      · n_tables 가 doc.json 의 표 수 합과 같은가
+      · manifest 의 문서가 하나도 빠지지 않았는가 (원문 없는 것 포함)
+
+    보지 않는 것: 인덱스가 **충분한가**. 어떤 필드를 넣을지는 설계 결정이고
+    이 검사로 답할 수 없다.
+    """
+    import gzip
+    path = os.path.join(P.INDEX_DIR, 'documents.jsonl')
+    if not os.path.isfile(path):
+        print('인덱스가 없다. scripts/05_build_doc_index.py 를 먼저.')
+        return 3, []
+    if not _need_docs():
+        return 3, []
+
+    man = {}
+    with open(args.manifest, encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                r = json.loads(line)
+                man[r['doc_id']] = r
+
+    rows = []
+    idx = {}
+    dup = []
+    with open(path, encoding='utf-8') as f:
+        for line in f:
+            e = json.loads(line)
+            if e['doc_id'] in idx:
+                dup.append(e['doc_id'])
+            idx[e['doc_id']] = e
+
+    t0 = time.time()
+    n_toc = n_per = 0
+    for doc_id, e in sorted(idx.items()):
+        bad = []
+        m = man.get(doc_id)
+        if m is None:
+            bad.append('manifest 에 없는 문서')
+        else:
+            for k in ('corp_name', 'corp_code', 'stock_code', 'industry',
+                      'sector', 'doc_group', 'doc_subtype', 'report_nm',
+                      'is_correction', 'rcept_no', 'file_path'):
+                if k in e and e[k] != m.get(k):
+                    bad.append('%s: 인덱스 %r != manifest %r'
+                               % (k, e[k], m.get(k)))
+            if e.get('rcept_dt') and m.get('rcept_dt'):
+                if e['rcept_dt'].replace('-', '') != m['rcept_dt']:
+                    bad.append('rcept_dt %r != %r' % (e['rcept_dt'], m['rcept_dt']))
+            if e.get('dart_url') and not e['dart_url'].endswith(m.get('rcept_no', '')):
+                bad.append('dart_url 이 접수번호와 안 맞는다')
+
+        if e.get('status') == 'ok':
+            p = os.path.join(P.INTERIM_DOCS_DIR, doc_id + '.json.gz')
+            if not os.path.isfile(p):
+                bad.append('status=ok 인데 doc.json 이 없다')
+            else:
+                with gzip.open(p, 'rt', encoding='utf-8') as f:
+                    payload = json.load(f)
+                heads = set()
+                per_vals = set()
+                ntab = 0
+                for part in payload.get('parts') or []:
+                    d = part.get('doc') or {}
+                    for c in d.get('chunks') or []:
+                        if c[0] == 'h' and c[1] == 2:
+                            heads.add(c[2])
+                    ntab += ((d.get('tables') or {}).get('n_tables') or 0)
+                    pm = ((d.get('periods') or {}).get('map') or {})
+                    for lab, rec in pm.items():
+                        if rec.get('kind') == 'instant':
+                            per_vals.add((lab, rec.get('date')))
+                        elif rec.get('kind') == 'duration':
+                            per_vals.add((lab, '%s ~ %s'
+                                          % (rec.get('start'), rec.get('end'))))
+                for t in (e.get('toc') or []):
+                    n_toc += 1
+                    if t not in heads:
+                        bad.append('목차에 없는 제목: %r' % t[:30])
+                        break
+                for lab, v in (e.get('periods') or {}).items():
+                    n_per += 1
+                    if (lab, v) not in per_vals:
+                        bad.append('doc.json 에 없는 기수: %r → %r' % (lab, v))
+                        break
+                if e.get('n_tables') != ntab:
+                    bad.append('n_tables %s != doc.json %s'
+                               % (e.get('n_tables'), ntab))
+
+        rows.append(dict(doc_id=doc_id, doc_group=e.get('doc_group'),
+                         source_path='', body_same='', header_same='',
+                         result='PASS' if not bad else 'FAIL',
+                         detail='; '.join(bad[:3])))
+
+    for doc_id in man:
+        if doc_id not in idx:
+            rows.append(dict(doc_id=doc_id, doc_group=man[doc_id].get('doc_group'),
+                             source_path='', body_same='', header_same='',
+                             result='FAIL', detail='인덱스에서 빠진 문서'))
+    for doc_id in dup:
+        rows.append(dict(doc_id=doc_id, doc_group='', source_path='',
+                         body_same='', header_same='', result='FAIL',
+                         detail='인덱스에 중복된 문서'))
+
+    print('  인덱스 %s줄 / manifest %s줄 / 목차 %s마디 / 기수 %s건 / %.1fs'
+          % ('{:,}'.format(len(idx)), '{:,}'.format(len(man)),
+             '{:,}'.format(n_toc), '{:,}'.format(n_per), time.time() - t0))
+    print('  이 검사는 "지어내지 않았는가"만 본다. '
+          '어떤 필드가 있어야 하는가는 답하지 않는다.')
+    ok = sum(1 for r in rows if r['result'] == 'PASS')
+    return (0 if ok == len(rows) else 2), rows
+
+
 CHECKS = {
     'baseline': check_baseline,
     'docjson': check_docjson,
@@ -848,10 +1280,14 @@ CHECKS = {
     'encoding': check_encoding,
     'structure': check_structure,
     'grid': check_grid,
+    'captions': check_captions,
+    'periods': check_periods,
+    'keys': check_keys,
     'sums': check_sums,
     'facts': check_facts,
     'chunks': check_chunks,
     'coverage': check_coverage,
+    'index': check_index,
 }
 
 FIELDS = ['result', 'doc_id', 'doc_group', 'source_path', 'body_same',
@@ -867,7 +1303,7 @@ def main(argv=None):
     ap.add_argument('--raw-root', default=P.RAW_ROOT)
     ap.add_argument('--manifest', default=P.MANIFEST_PATH)
     ap.add_argument('--limit', type=int, default=0)
-    ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 4) - 1))
+    ap.add_argument('--jobs', type=int, default=min(61, max(1, (os.cpu_count() or 4) - 1)))  # 61: 윈도우 ProcessPoolExecutor 상한
     ap.add_argument('--write-md', action='store_true',
                     help='재변환 md 를 data/verify/md 에 실제로 쓴다 '
                          '(불일치가 났을 때 diff 뜨려고). 기본은 해시만.')

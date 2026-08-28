@@ -152,6 +152,7 @@ def _one(job):
     out_t = set()
     for part in payload.get('parts') or []:
         path = os.path.join(P.REPO_ROOT, part['source_path'])
+        path = P.on_disk(path) or path      # NFC 기록 ↔ NFD 디스크
         try:
             with open(path, 'rb') as f:
                 raw = f.read()
@@ -220,7 +221,7 @@ def _one(job):
 def main(argv=None):
     ap = argparse.ArgumentParser(description='본문 손실 검증')
     ap.add_argument('--manifest', default=P.MANIFEST_PATH)
-    ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 4) - 1))
+    ap.add_argument('--jobs', type=int, default=min(61, max(1, (os.cpu_count() or 4) - 1)))  # 61: 윈도우 ProcessPoolExecutor 상한
     ap.add_argument('--sample', type=int, default=0)
     ap.add_argument('--keep-empty', action='store_true',
                     help='drop_empty 를 끄고 비교한다 (원문 포착률의 정직한 값)')

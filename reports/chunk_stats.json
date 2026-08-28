@@ -1,18 +1,22 @@
 {
- "chunks": 1303338,
+ "chunks": 1290417,
  "by_kind": {
-  "text": 649388,
+  "text": 636467,
   "table": 653950
  },
- "total_chars": 765196755,
- "avg_chars": 587,
+ "total_chars": 770288232,
+ "avg_chars": 597,
  "numeric_tables": 423048,
- "numeric_tables_with_unit": 413057,
- "unit_coverage": 0.9764,
+ "numeric_tables_with_unit": 413337,
+ "unit_coverage": 0.977,
  "parse_confidence": {
-  "unverified": 3592,
-  "high": 14139,
-  "low": 2633
+  "high": 15902,
+  "unverified": 985,
+  "low": 3477
  },
- "elapsed_sec": 110.9
+ "footnote_chunks": 38035,
+ "footnotes_attached": 41357,
+ "period_dated_chunks": 101413,
+ "period_dated_labels": 233948,
+ "elapsed_sec": 108.7
 }

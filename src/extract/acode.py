@@ -28,7 +28,7 @@ DART 서식은 값 셀에 `ACODE`(필드코드)를, 단위 셀에 `AUNITVALUE`(�
 덮어쓰기 때문이다. 리스트면 겹쳐도 둘 다 남고, 겹쳤다는 사실이 보인다.
 """
 
-__all__ = ['extract_facts', 'group_by_row']
+__all__ = ['extract_facts', 'group_by_row', 'key_of', 'key_stats']
 
 
 def _cells(tree, tr):
@@ -138,3 +138,45 @@ def key_of(fact):
     """유일 키. 명세의 3튜플이 아니라 4튜플이다 (모듈 머리말 참조)."""
     return (fact['table_idx'], fact['row_idx'], fact['col_idx'],
             fact['acode'])
+
+
+def key_stats(facts):
+    """키 설계가 이 문서에서 실제로 안전한가 — 세어서 남긴다.
+
+    1단계 census 는 **코퍼스 전체**에서 3튜플 키가 27.45%를 잃는다고 쟀다.
+    그 측정은 census 스크립트 안에만 있어서, 추출기가 바뀌어도 다시 울리지
+    않는다. 그래서 추출한 자리에서 같은 것을 다시 세어 doc.json 에 남긴다 —
+    `unique_4tuple != facts` 가 되는 순간 검증(`--keys`)이 잡는다.
+
+        facts           ACODE 를 가진 셀 수
+        unique_4tuple   (table_idx, row_idx, col_idx, acode)  ← 쓰는 키
+        unique_3tuple   (table_idx, row_idx, acode)           ← 명세의 키
+        unique_acode    {acode: value} 로 모았을 때 남는 수
+        same_row_repeat 같은 행에서 같은 ACODE 가 되풀이된 수 (3튜플 유실의 원인)
+    """
+    quads = set()
+    triples = set()
+    codes = set()
+    row_seen = {}
+    repeat = 0
+    for f in facts:
+        ti, ri, ci, code = (f['table_idx'], f['row_idx'], f['col_idx'],
+                            f['acode'])
+        quads.add((ti, ri, ci, code))
+        triples.add((ti, ri, code))
+        codes.add(code)
+        s = row_seen.setdefault((ti, ri), set())
+        if code in s:
+            repeat += 1
+        else:
+            s.add(code)
+    n = len(facts)
+    return {
+        'facts': n,
+        'unique_4tuple': len(quads),
+        'unique_3tuple': len(triples),
+        'unique_acode': len(codes),
+        'same_row_repeat': repeat,
+        'loss_3tuple': round((n - len(triples)) / n, 6) if n else 0.0,
+        'loss_4tuple': round((n - len(quads)) / n, 6) if n else 0.0,
+    }

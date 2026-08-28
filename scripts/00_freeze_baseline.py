@@ -74,7 +74,9 @@ def _worker_init(manifest_path, alias_by_corp, drop_empty, write=True):
 def _convert(path):
     """원문 하나 → 처리 기록 dict. 예외는 절대 밖으로 새지 않고 기록된다."""
     rp, index, registry = _G['rp'], _G['index'], _G['registry']
-    rec = {'source_path': os.path.relpath(path, P.REPO_ROOT).replace('\\', '/')}
+    # 경로는 NFC 로 통일한다 — 기계마다 다른 정규화로 적히면 베이스라인
+    # 대조가 통째로 'NEW' 가 된다 (P.rel 주석 참조).
+    rec = {'source_path': P.rel(path)}
     meta = index.find(path)
     if meta is None:
         rec.update(status='no_manifest', stage='index',
@@ -214,7 +216,7 @@ def main(argv=None):
     ap.add_argument('--raw-root', default=P.RAW_ROOT)
     ap.add_argument('--manifest', default=P.MANIFEST_PATH)
     ap.add_argument('--limit', type=int, default=0)
-    ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 4) - 1))
+    ap.add_argument('--jobs', type=int, default=min(61, max(1, (os.cpu_count() or 4) - 1)))  # 61: 윈도우 ProcessPoolExecutor 상한
     ap.add_argument('--keep-empty', action='store_true')
     ap.add_argument('--force', action='store_true',
                     help='기존 baseline/ 을 지우고 처음부터 다시 만든다')
