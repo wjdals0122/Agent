@@ -65,8 +65,14 @@ class Rule:
         kind = self.handle.get('type')
         found = self.scan(text)
 
-        if kind in (None, 'count_only', 'record_only', 'defer'):
-            # 원문을 바꾸지 않는다. 그래도 기록은 남긴다.
+        # 텍스트 층에서 원문을 바꾸지 않는 조치들.
+        # attach / demote 는 **글자가 아니라 구조**에 하는 조치라 여기서는
+        # 할 일이 없다 — 판정은 normalize/table_router.py 가, 기록은
+        # normalize/document.py 의 table stage 가 남긴다. 그래도 이 목록에
+        # 넣어 두는 이유는, 나중에 누가 이 stage 를 엔진에 물렸을 때
+        # ValueError 로 파이프라인이 죽는 대신 조용히 세기만 하게 하려는 것이다.
+        if kind in (None, 'count_only', 'record_only', 'defer',
+                    'attach', 'demote'):
             return text, ([found] if found else [])
 
         if kind == 'escape':

@@ -41,6 +41,7 @@ def main():
     from normalize import policy as policy_mod, document
     pol = policy_mod.load()
     stages_run = set(document.STAGES_RUN)
+    engine_stages = set(document.ENGINE_STAGES)
 
     occ = Counter()        # 규칙 → 발생 건수 합
     parts = Counter()      # 규칙 → 그 규칙이 걸린 part 수
@@ -150,11 +151,19 @@ def main():
     A('- **미연결** — 정책에 있고 규칙도 유효한데 그 stage 를 '
       '파이프라인이 아직 안 부른다. 0건이 아니라 **안 재봤다**는 뜻이다.')
     A('- **코드가 판정 (엔진 밖)** — 정책 엔진이 regex 로 셀 수 없는 규칙. '
-      'E3 는 인코딩 층이, E4 는 순회가 판정하고 정책은 **무엇을 어떻게 '
-      '기록할지**를 정한다. 실측치는 각 정책의 `measured:` 에 있다.')
+      'E3 는 인코딩 층이, E4 는 순회가, E5/E6 는 표 모양과 형제 위치가, '
+      'E8 은 행렬 좌표가 판정한다. 정책은 **무엇을 어떻게 기록할지**를 '
+      '정하고, 각 규칙의 `implemented_in:` 이 판정하는 코드를 가리킨다.')
     A('')
     A('지금 파이프라인이 돌리는 stage: %s'
       % ', '.join('`%s`' % s for s in sorted(stages_run)))
+    A('')
+    A('그중 정책 엔진이 정규식으로 직접 도는 stage: %s. 나머지(%s)는 '
+      '정규식 한 방으로 셀 수 없어서(표 모양·형제 위치·행렬 좌표) 코드가 '
+      '판정하고 조치 기록만 같은 규칙 id 로 남긴다 — `encoding` 과 같은 '
+      '방식이다.'
+      % (', '.join('`%s`' % x for x in sorted(engine_stages)),
+         ', '.join('`%s`' % x for x in sorted(stages_run - engine_stages))))
     A('')
     if silent:
         A('> ⚠ 아래 규칙은 실제로 도는데 이 코퍼스에서 0건이다. '

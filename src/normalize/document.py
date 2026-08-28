@@ -35,8 +35,16 @@ SCHEMA = 'dart.doc/1'
 # 이 파이프라인이 실제로 돌리는 정책 stage. 여기 없는 stage 의 규칙은
 # 정책에 적혀 있어도 **아무도 부르지 않는다.**
 # reports/exception_summary.md 가 "0건"과 "안 붙었음"을 구분하는 근거다.
-# table / parse stage 는 5단계 구조화 경로가 붙을 자리다.
-STAGES_RUN = ('sanitize',)
+#
+# 두 가지를 구분한다.
+#   ENGINE_STAGES  정책 엔진(normalize/policy.py)이 정규식으로 직접 도는 stage.
+#                  텍스트를 통째로 훑어 세거나 치환한다.
+#   STAGES_RUN     파이프라인이 실제로 가동하는 stage 전부. table/parse 는
+#                  정규식 한 방으로 셀 수 없어서(표 모양·형제 위치·행렬 좌표)
+#                  코드가 판정하고, 정책은 무엇을 어떻게 기록할지를 정한다.
+#                  encoding 과 같은 방식이다.
+ENGINE_STAGES = ('sanitize',)
+STAGES_RUN = ('sanitize', 'table', 'parse')
 
 # 5단계 구조화 대상 문서군.
 #   financials  {XBRL} 재무제표 — periodic 에만 있다
@@ -97,8 +105,9 @@ def build_doc(raw_bytes, doc_group, file_path=None, corp_name=None,
     # 들어 있든 그대로 돈다. 지금 정책은 전부 count_only 라 source 가
     # 그대로 돌아오고, 기록만 쌓인다.
     pol = policy or policy_mod.load()
-    source, acts = pol.run_stage('sanitize', source)
-    actions.extend(acts)
+    for stage in ENGINE_STAGES:
+        source, acts = pol.run_stage(stage, source)
+        actions.extend(acts)
 
     if corp_name is None and file_path is not None:
         corp_name = mod.corp_name_from_path(file_path)
@@ -106,11 +115,28 @@ def build_doc(raw_bytes, doc_group, file_path=None, corp_name=None,
     parser = getattr(mod, clsname)(drop_empty=drop_empty)
     doc = parser.parse(source, receipt_no, corp_name)
 
+    # ── 트리는 문서당 한 번만 세운다 ────────────────────────────────
+    # table stage(E5/E6)·구조화(E7/E8)·진단(E3/E4/grid)이 전부 같은 트리를
+    # 쓴다. 각자 세우면 13.7MB 문서를 세 번 파싱한다. exchange 는 HTML 이라
+    # 공용 트리를 안 쓴다(파서가 자기 _Node 를 쓴다) — root 는 None 이다.
+    root = None
+    if doc_group != 'exchange':
+        b = mod._TreeBuilder()
+        b.feed(source)
+        root = b.root
+
+    # ── table stage: E5 표 아닌 TABLE / E6 단위·각주 귀속 ───────────
+    # 판정만 하고 아무것도 바꾸지 않는다. 어느 캡션을 어느 표에 붙일지
+    # **정해서 남기고**, 붙일 데가 없으면 붙이지 않는다(각주의 45.2%).
+    tbl, tacts = _table_stage(root, pol)
+    if tbl:
+        doc['tables'] = tbl
+    actions.extend(tacts)
+
     # ── 5단계: 구조화 경로 ──────────────────────────────────────────
-    # 여기서 트리를 **한 번 더 세우지 않는다** — 파서가 방금 쓴 것과 같은
-    # 소스를 쓰되, 구조화가 필요한 문서군에서만 트리를 세운다.
     # 결과는 doc.json 안에 들어가므로 팩트 테이블은 XML 을 다시 안 본다.
-    struct, sacts = _structure(mod, source, doc_group, drop_empty, doc=doc)
+    struct, sacts = _structure(mod, source, doc_group, drop_empty, doc=doc,
+                               root=root)
 
     # 정정공시는 문서군을 가리지 않는다 — 넷 다 정정이 있다.
     from extract import corrections as corr
@@ -126,12 +152,87 @@ def build_doc(raw_bytes, doc_group, file_path=None, corp_name=None,
         doc['structured'] = struct
     actions.extend(sacts)
 
+    # ── E7: 기수 → 실제 날짜 ────────────────────────────────────────
+    # 본문은 진단(E3 한글 비율)과 같은 것을 쓴다. 두 번 뽑지 않는다.
+    body = tree_text(root) if root is not None else _chunk_text(doc)
+    per, pacts = _periods(body)
+    if per:
+        doc['periods'] = per
+    actions.extend(pacts)
+
     # ── 검증 진단값 ────────────────────────────────────────────────
-    # 검증 골든셋(structure/encoding/grid)이 5.5GB 를 다시 파싱하지 않게
-    # 여기서 재 둔다. doc.json 이 축이라는 원칙을 검증에도 적용한 것이다.
-    # 코드가 바뀌면 멱등 키(소스 해시)가 무효화되어 자동으로 다시 잰다.
-    doc['diagnostics'] = _diagnose(mod, source, doc_group, actions, doc)
+    # 검증 골든셋(structure/encoding/grid/captions/keys)이 5.5GB 를 다시
+    # 파싱하지 않게 여기서 재 둔다. doc.json 이 축이라는 원칙을 검증에도
+    # 적용한 것이다. 코드가 바뀌면 멱등 키(소스 해시)가 무효화되어 자동으로
+    # 다시 잰다.
+    doc['diagnostics'] = _diagnose(mod, source, doc_group, actions, doc,
+                                   root=root, body=body)
+
+    # ── E4: LIBRARY 컨테이너를 몇 개 통과했는가 ─────────────────────
+    # 고칠 것이 없는 규칙이지만(순회가 이미 descendant 축이다) **몇 개를
+    # 만났고 하나도 안 잃었는지**가 산출물에 남아야 한다. 남지 않으면
+    # "0건"과 "안 재봤다"가 구분되지 않는다 (절대 규칙 2).
+    d = doc['diagnostics']
+    if d.get('library_nodes'):
+        want, got = d.get('section2_regex') or 0, d.get('section2_reached') or 0
+        actions.append({'rule': 'E4_library_container', 'stage': 'tree',
+                        'action': 'record', 'count': d['library_nodes'],
+                        'section2_regex': want, 'section2_reached': got,
+                        'lost': want - got,
+                        'severity': 'info' if want == got else 'error'})
     return doc, actions
+
+
+def tree_text(root):
+    from normalize import tree
+    return tree.text(root)
+
+
+def _table_stage(root, pol):
+    """E5/E6 — 표 판정과 캡션 귀속. (판정 결과, 조치기록).
+
+    exchange(HTML)는 대상이 아니다 — DSD 의 TABLE/TE 구조가 없다. 0건으로
+    적지 않고 아예 빼는 이유는 "0건"과 "잴 것이 없음"이 다른 사실이기
+    때문이다 (1단계 census 와 같은 규칙).
+    """
+    if root is None:
+        return None, []
+    from normalize import tree, value, table_router
+    sc = table_router.scan(root, tree, value, pol)
+    acts = []
+    if sc['n_not_a_table']:
+        acts.append({'rule': 'E5_not_a_table', 'stage': 'table',
+                     'action': 'demote', 'severity': 'info',
+                     'count': sc['n_not_a_table'], 'tables': sc['n_tables']})
+    for kind, rid in (('unit', 'E6_unit_caption'),
+                      ('footnote', 'E6_footnote_caption')):
+        c = sc[kind]
+        if not c['total']:
+            continue
+        acts.append({'rule': rid, 'stage': 'table', 'action': 'attach',
+                     'severity': 'info', 'count': c['total'],
+                     'attached': c['attached'],
+                     'unattached': c['total'] - c['attached'],
+                     'next_only': c['next_only'], 'prev_only': c['prev_only'],
+                     'both': c['both'], 'neither': c['neither']})
+    return sc, acts
+
+
+def _periods(body):
+    """E7 — 기수 표기를 그 문서 안의 날짜에 잇는다. (사전, 조치기록).
+
+    못 이은 것은 `unresolved` 로 남는다. 문서 밖에서 날짜를 끌어오지
+    않는다 — 그건 추론이고, 틀린 기간을 자신 있게 말하게 만든다.
+    """
+    from extract import periods as per
+    p = per.scan_body(body)
+    if not p['n_labels']:
+        return None, []
+    return p, [{'rule': 'E7_missing_period_date', 'stage': 'parse',
+                'action': 'map', 'count': p['n_labels'],
+                'distinct': p['n_distinct'], 'resolved': p['n_resolved'],
+                'unresolved': p['n_distinct'] - p['n_resolved'],
+                'severity': 'info' if p['n_resolved'] else 'warn'}]
 
 
 _RE_HANGUL = None
@@ -158,7 +259,8 @@ def _chunk_text(doc):
     return ' '.join(x for x in out if x)
 
 
-def _diagnose(mod, source, doc_group, actions, doc=None):
+def _diagnose(mod, source, doc_group, actions, doc=None, root=None,
+              body=None):
     """검증용 진단값. 판정하지 않고 **세기만** 한다.
 
     exchange 는 HTML 이라 SECTION-2·LIBRARY 가 없고, 파서도 공용 트리를
@@ -178,7 +280,8 @@ def _diagnose(mod, source, doc_group, actions, doc=None):
     d = {'source_chars': len(source)}
 
     if doc_group == 'exchange':
-        body = _chunk_text(doc or {})
+        if body is None:
+            body = _chunk_text(doc or {})
         chars = len(re.sub(r'\s', '', body))
         d['hangul'] = len(_RE_HANGUL.findall(body))
         d['text_chars'] = chars
@@ -190,16 +293,18 @@ def _diagnose(mod, source, doc_group, actions, doc=None):
         d['escape_chars_added'] = sum(a.get('chars_added', 0) for a in esc0)
         return d
 
-    b = mod._TreeBuilder()
-    b.feed(source)
-    root = b.root
+    if root is None:                    # 혼자 불렸을 때만 다시 세운다
+        b = mod._TreeBuilder()
+        b.feed(source)
+        root = b.root
     d['tree_scan'] = 'dsd_xml'
 
     # E3 / encoding — 한글 음절 비율.
     # 분모는 태그를 지운 문자열이 아니라 **파서가 실제로 읽어낸 본문**이다
     # (1단계에서 확인: 태그 제거 정규식은 DSD 의 긴 속성 때문에 분모를
     #  부풀려 멀쩡한 13.7MB 문서를 2.84%로 만든다).
-    body = tree.text(root)
+    if body is None:
+        body = tree.text(root)
     chars = len(re.sub(r'\s', '', body))
     d['hangul'] = len(_RE_HANGUL.findall(body))
     d['text_chars'] = chars
@@ -237,6 +342,29 @@ def _diagnose(mod, source, doc_group, actions, doc=None):
         d['tables'] = ntab
         d['tables_ragged'] = ragged
 
+    # E5/E6 — table stage 가 판정한 것. 검증(--captions)이 쓴다.
+    tb = (doc or {}).get('tables')
+    if tb:
+        d['captions'] = {
+            'tables': tb['n_tables'], 'not_a_table': tb['n_not_a_table'],
+            'unit': tb['unit']['total'],
+            'unit_attached': tb['unit']['attached'],
+            'footnote': tb['footnote']['total'],
+            'footnote_attached': tb['footnote']['attached'],
+            'attach': len(tb['attach']),
+        }
+
+    # E8 — 키가 이 문서에서 실제로 유일한가. 검증(--keys)이 쓴다.
+    st = ((doc or {}).get('structured') or {}).get('acode_key_stats')
+    if st:
+        d['acode'] = st
+
+    # E7 — 기수 표기 중 날짜를 이은 비율. 검증(--periods)이 쓴다.
+    pr = (doc or {}).get('periods')
+    if pr:
+        d['periods'] = {'labels': pr['n_labels'], 'distinct': pr['n_distinct'],
+                        'resolved': pr['n_resolved']}
+
     # sanitize — 치환이 실제로 일어났으면 글자 수가 늘어야 한다
     esc = [a for a in actions if a.get('action') == 'escape']
     d['escape_ops'] = len(esc)
@@ -245,8 +373,11 @@ def _diagnose(mod, source, doc_group, actions, doc=None):
     return d
 
 
-def _structure(mod, source, doc_group, drop_empty, doc=None):
-    """문서군별 구조화. (structured dict, actions)."""
+def _structure(mod, source, doc_group, drop_empty, doc=None, root=None):
+    """문서군별 구조화. (structured dict, actions).
+
+    root 는 build_doc 이 세운 트리다. 여기서 다시 세우지 않는다.
+    """
     wanted = STRUCTURED.get(doc_group)
     if not wanted:
         return None, []
@@ -271,9 +402,10 @@ def _structure(mod, source, doc_group, drop_empty, doc=None):
 
     from normalize import tree, value, grid, table_router
 
-    b = mod._TreeBuilder()
-    b.feed(source)
-    root = b.root
+    if root is None:
+        b = mod._TreeBuilder()
+        b.feed(source)
+        root = b.root
 
     if 'financials' in wanted:
         from extract import financials as fin
@@ -307,6 +439,20 @@ def _structure(mod, source, doc_group, drop_empty, doc=None):
             actions.append({
                 'rule': 'S5_acode', 'stage': 'extract',
                 'action': 'structure', 'count': len(facts),
+            })
+            # E8 — 키가 실제로 유일한지 **추출한 자리에서** 다시 센다.
+            # census 는 코퍼스 전체를 한 번 쟀을 뿐이라, 추출기가 바뀌면
+            # 다시 울리지 않는다. 여기서 세면 문서마다 울린다.
+            st = ac.key_stats(facts)
+            out['acode_key_stats'] = st
+            actions.append({
+                'rule': 'E8_acode_repeat', 'stage': 'parse', 'action': 'key',
+                'count': st['facts'],
+                'unique_4tuple': st['unique_4tuple'],
+                'unique_3tuple': st['unique_3tuple'],
+                'same_row_repeat': st['same_row_repeat'],
+                'severity': 'info' if st['unique_4tuple'] == st['facts']
+                            else 'error',
             })
 
     return (out or None), actions

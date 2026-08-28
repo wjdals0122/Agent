@@ -99,8 +99,8 @@ def _needs_build(doc_id, files):
         return True
     stamps = old.get('_source_mtimes') or {}
     for fp in files:
-        rel = os.path.relpath(fp, P.REPO_ROOT).replace('\\', '/')
-        if abs(stamps.get(rel, -1) - os.path.getmtime(fp)) > 1e-6:
+        # 기록된 경로는 NFC 다. 디스크가 NFD 여도 같은 열쇠로 찾아야 한다.
+        if abs(stamps.get(P.rel(fp), -1) - os.path.getmtime(fp)) > 1e-6:
             return True
     return False
 
@@ -117,7 +117,7 @@ def build_one(job):
     parts = []
     part_recs = []
     for fp in sorted(files):
-        rel = os.path.relpath(fp, P.REPO_ROOT).replace('\\', '/')
+        rel = P.rel(fp)
         m = index.find(fp)
         if m is None:
             part_recs.append({'source_path': rel, 'status': 'no_manifest',
@@ -155,9 +155,8 @@ def build_one(job):
 
     payload = document.doc_to_json(doc_id, meta or {}, parts)
     payload['_config_hash'] = CONFIG_HASH
-    payload['_source_mtimes'] = {
-        os.path.relpath(fp, P.REPO_ROOT).replace('\\', '/'):
-            os.path.getmtime(fp) for fp in files}
+    payload['_source_mtimes'] = {P.rel(fp): os.path.getmtime(fp)
+                                 for fp in files}
 
     P.ensure_dirs(P.INTERIM_DOCS_DIR)
     tmp = out_path(doc_id) + '.tmp'
@@ -183,6 +182,8 @@ def collect_jobs(raw_root, manifest_path):
             row = json.loads(line)
             folder = os.path.join(P.REPO_ROOT, 'corpus',
                                   row['file_path'].replace('/', os.sep))
+            # manifest 는 NFC, 디스크는 NFD 일 수 있다 (P.on_disk 주석 참조)
+            folder = P.on_disk(folder) or folder
             xmls = []
             if os.path.isdir(folder):
                 xmls = sorted(os.path.join(folder, fn)
@@ -199,7 +200,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description='3단계 doc.json 생성')
     ap.add_argument('--raw-root', default=P.RAW_ROOT)
     ap.add_argument('--manifest', default=P.MANIFEST_PATH)
-    ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 4) - 1))
+    ap.add_argument('--jobs', type=int, default=min(61, max(1, (os.cpu_count() or 4) - 1)))  # 61: 윈도우 ProcessPoolExecutor 상한
     ap.add_argument('--limit', type=int, default=0)
     ap.add_argument('--force', action='store_true', help='멱등 스킵 무시')
     ap.add_argument('--only-failed', action='store_true',

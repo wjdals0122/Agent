@@ -19,6 +19,7 @@ DART_* 환경변수로 덮어쓸 수 있다(scripts/config.py와 같은 규칙).
 import hashlib
 import json
 import os
+import unicodedata
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
@@ -49,6 +50,45 @@ INDEX_DIR = os.path.join(DATA_DIR, 'index')
 REPORTS_DIR = os.path.join(REPO_ROOT, 'reports')
 DOCS_DIR = os.path.join(REPO_ROOT, 'docs')
 CONFIG_DIR = os.path.join(REPO_ROOT, 'config')
+
+
+def nfc(s):
+    """경로 문자열의 유니코드 정규화를 NFC 로 맞춘다.
+
+    한글 파일·폴더 이름은 같은 글자가 **두 가지 바이트열**로 존재한다.
+    NFC('한'=U+D55C 한 자) 와 NFD('ㅎ+ㅏ+ㄴ' 세 자)다. 맥·구글드라이브·
+    일부 zip 을 거쳐 복사된 코퍼스는 NFD 로 저장되는데, `manifest.jsonl`
+    과 `baseline/index.jsonl` 은 NFC 로 적혀 있다. 윈도우 파일시스템은
+    둘을 같은 이름으로 봐 주지 않으므로, NFC 경로로 `isdir()` 하면
+    **폴더가 실제로 있는데도 없다고 나온다**(실측: 4,204개 중 4,054개).
+
+    E3(선언된 charset 과 실제 바이트가 다르다)와 같은 계열의 문제다 —
+    적혀 있는 이름과 저장된 이름이 다르다. 그래서 같은 방식으로 다룬다:
+    **기록에 남는 경로는 언제나 NFC 로 통일**하고(rel), 디스크를 열 때만
+    실제 저장형을 찾는다(on_disk).
+    """
+    return unicodedata.normalize('NFC', s) if s else s
+
+
+def rel(path):
+    """레포 기준 상대경로. 구분자는 '/', 유니코드는 NFC.
+
+    산출물(doc.json / parse_report / baseline index)에 적히는 경로는 전부
+    이 모양이다. 기계가 달라도 같은 문자열이 나와야 단계 사이 조인이 된다.
+    """
+    return nfc(os.path.relpath(path, REPO_ROOT).replace('\\', '/'))
+
+
+def on_disk(path):
+    """이 경로가 어떤 정규화로 저장돼 있든 **실제로 존재하는 경로**를 준다.
+
+    없으면 None. 있는지 없는지를 판정하는 자리에서 이걸 쓴다.
+    """
+    for cand in (path, unicodedata.normalize('NFC', path),
+                 unicodedata.normalize('NFD', path)):
+        if os.path.exists(cand):
+            return cand
+    return None
 
 
 def ensure_dirs(*paths):

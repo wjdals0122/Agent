@@ -285,7 +285,7 @@ def main(argv=None):
     ap.add_argument('--raw-root', default=P.RAW_ROOT)
     ap.add_argument('--manifest', default=P.MANIFEST_PATH)
     ap.add_argument('--sample', type=int, default=0, help='앞에서 N개만')
-    ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 4) - 1))
+    ap.add_argument('--jobs', type=int, default=min(61, max(1, (os.cpu_count() or 4) - 1)))  # 61: 윈도우 ProcessPoolExecutor 상한
     ap.add_argument('--out', default=os.path.join(P.REPORTS_DIR,
                                                   'exception_census.jsonl'))
     a = ap.parse_args(argv)

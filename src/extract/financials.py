@@ -67,11 +67,8 @@ BASIS_SOURCE = {'S': 'suffix', 'C': 'suffix', '': 'inferred_no_suffix'}
 # {XBRL}BS_S / {XBRL}IS_C3 / {XBRL}BS / {XBRL}IS1
 _RE_ACLASS = re.compile(r'^\{XBRL\}(BS|IS|CF|EF)(?:_([SC]))?(\d)?$')
 
-# "제 17 기 1분기말 2023.03.31 현재" / "제 16 기 2022.01.01 ~ 2022.12.31"
-# 라벨은 '제 N 기' 로 시작해 **첫 날짜 앞까지**다. 접미사에 숫자가 들어가는
-# 경우(1분기말, 3분기)가 많아서 [^\d] 로 끊으면 '제 17 기' 로 잘린다.
-_RE_PERIOD_START = re.compile(r'제\s*\d{1,3}\s*기')
-_RE_DATE = re.compile(r'(\d{4})[.\-/년]\s*(\d{1,2})[.\-/월]\s*(\d{1,2})')
+# 기수·날짜 정규식은 extract/periods.py 로 옮겼다 (E7 을 문서 전체에
+# 적용하면서 한 곳으로 모았다). 여기에 다시 두면 두 벌이 갈린다.
 _RE_NUM = re.compile(r'^-?[\d,]+(?:\.\d+)?$')
 
 
@@ -116,32 +113,12 @@ def _cell_text(tree, value, cell):
 def extract_periods(caption_lines):
     """캡션 줄에서 (기수 라벨 → 날짜) 를 뽑는다. E7 의 답.
 
-    '제 17 기 1분기말 2023.03.31 현재' → label '제 17 기 1분기말',
-    date '2023-03-31'. 기간형('~')이면 start/end 둘 다 잡는다.
+    본체는 `extract/periods.py` 로 옮겼다 — 같은 규칙을 문서 전체에도
+    적용해야 해서(정기공시 밖의 기수 표기 155,048건) 한 곳에 두었다.
+    여기서 다시 쓰면 한쪽만 고치게 된다 (절대 규칙 6).
     """
-    out = []
-    for line in caption_lines:
-        m = _RE_PERIOD_START.search(line)
-        if not m:
-            continue
-        d0 = _RE_DATE.search(line, m.start())
-        label = line[m.start():d0.start()] if d0 else line[m.start():]
-        label = re.sub(r'\s+', ' ', label).strip()
-        dates = [_iso(d) for d in _RE_DATE.findall(line)]
-        rec = {'label': label, 'raw': line.strip()}
-        if len(dates) >= 2:
-            rec.update(kind='duration', start=dates[0], end=dates[1])
-        elif len(dates) == 1:
-            rec.update(kind='instant', date=dates[0])
-        else:
-            rec.update(kind='unknown')
-        out.append(rec)
-    return out
-
-
-def _iso(t):
-    y, mo, d = t
-    return '%04d-%02d-%02d' % (int(y), int(mo), int(d))
+    from extract.periods import from_lines
+    return from_lines(caption_lines)
 
 
 def extract_groups(root, tree, value, policy=None, grid_mod=None,

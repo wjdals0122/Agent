@@ -170,6 +170,8 @@ policies:
       reason: 표로 렌더링하지 않고 제목/문단으로 강등. 기존 _one_cell 동작.
     severity: info
     record: count
+    implemented_in: src/normalize/table_router.py (classify / scan)
+    verify: captions
     measured:
       tables: 1577395
       not_a_table: 846179
@@ -186,8 +188,13 @@ policies:
     handle:
       type: attach
       direction: next        # 실측 확정
+      fallback: prev         # 다음 형제가 진짜 표가 아닐 때만 (0.2%)
     severity: info
     record: count
+    implemented_in: >-
+      src/normalize/table_router.py (scan → doc['tables']['attach']),
+      src/chunk/build.py (단위 문맥을 조각 본문에 싣는다)
+    verify: captions
     measured:
       captions: 318391
       next_only: 0.548
@@ -206,9 +213,14 @@ policies:
     handle:
       type: attach
       direction: prev
+      fallback: next
       only_if_real_neighbour: true    # ★ 이 조건이 핵심
     severity: info
     record: count
+    implemented_in: >-
+      src/normalize/table_router.py (scan → doc['tables']['attach']),
+      src/chunk/build.py (바로 앞 조각이 표일 때 그 조각에 붙인다)
+    verify: captions
     measured:
       captions: 12055
       prev_only: 0.318
@@ -227,11 +239,21 @@ policies:
       type: regex
       pattern: '제\s*\d{1,3}\s*기'
     handle:
-      type: defer
-      to_stage: 5
-      reason: 기수 → 실제 날짜 매핑은 구조화 경로(extract/)에서 만든다.
+      type: record_only
+      map: label_to_date
+      scope: document        # ★ 문서 안에서만 잇는다
+      reason: >-
+        기수와 날짜가 **같은 줄**에 있는 곳이 그 문서의 사전이다. 그 사전으로
+        문서 전체의 기수 표기를 해석한다. 문서 밖(회사의 결산월 같은 것)에서
+        날짜를 끌어오지 않는다 — 그건 추론이고, 틀린 기간을 자신 있게
+        말하게 만든다. 못 이은 기수는 `unresolved` 로 남긴다.
     severity: info
     record: count
+    implemented_in: >-
+      src/extract/periods.py (scan_body → doc['periods']),
+      src/extract/financials.py ({XBRL} 캡션표 → 열-기간 매핑),
+      src/chunk/build.py (조각 본문에 '기수 = 날짜' 를 싣는다)
+    verify: periods
     measured:
       period_labels: 155048
 
@@ -242,9 +264,9 @@ policies:
     detect:
       type: manual
     handle:
-      type: defer
-      to_stage: 5
+      type: record_only
       key: [table_idx, row_idx, col_idx, acode]
+      store: list            # dict 로 모으지 않는다 — 겹치면 조용히 덮어쓴다
       reason: >-
         ★ 명세가 지정한 (table_idx, row_idx, acode) 는 이 코퍼스에서
         27.45% 를 잃는다. 같은 행 안에서 같은 ACODE 가 여러 열에 반복되기
@@ -253,7 +275,18 @@ policies:
         키를 한 칸 넓힌다.
     severity: error
     record: count
+    implemented_in: >-
+      src/extract/acode.py (extract_facts / key_stats →
+      doc['structured']['acode_facts'])
+    verify: keys
     measured:
+      scope_note: >-
+        아래 유실률은 코퍼스 전량(네 문서군) 기준이다. 지금 acode 추출은
+        major/holding 만 대상이라(정기공시 주석표 509종은 구조화하지 않는다)
+        실제 팩트 1,609,835개에서는 3튜플도 유실 0.00% 로 나온다. 같은 행
+        ACODE 반복이 periodic 에 몰려 있기 때문이다(표본 실측 42.7%).
+        열 번호는 추출 범위가 periodic 으로 넓어질 때를 위한 것이고,
+        지금 넣어 두는 비용은 0 이다.
       te_with_acode: 7635332
       loss_dict_by_acode: 0.8675
       loss_spec_key_3tuple: 0.2745

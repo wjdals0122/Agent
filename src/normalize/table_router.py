@@ -28,7 +28,8 @@ E6 — 단위 / 각주 귀속
 import re
 
 __all__ = ['shape', 'classify', 'is_real_table',
-           'caption_kind', 'attach_direction', 'patterns']
+           'caption_kind', 'attach_direction', 'patterns',
+           'scan', 'unit_of']
 
 # 정규식은 여기에 박아 두지 않는다. config/exception_policy.yaml 이
 # 사실의 출처다 — 코드와 정책 두 군데에 같은 패턴이 있으면 한쪽만 고치고
@@ -118,3 +119,135 @@ def attach_direction(kind, prev_is_real, next_is_real, pol=None):
             return 'next'
         return None            # 45.2% — 표의 각주가 아니라 그냥 주석
     return None
+
+
+# ══════════════════════════════════════════════════════════════════════
+# table stage — 문서 한 건을 훑어 E5/E6 를 판정한다 (부작용 없음)
+# ══════════════════════════════════════════════════════════════════════
+#
+# 여기까지가 "판정만" 이라는 이 파일의 계약 안이다. scan() 은 트리를
+# 읽기만 하고 아무것도 바꾸지 않는다. 무엇을 어디에 붙일지 **정하기만**
+# 하고, 실제로 그 결정을 쓰는 것은 doc.json 을 읽는 쪽이다.
+#
+# 표 색인(table_idx)은 tree.walk 순서, 즉 **중첩 표를 포함한** 문서 순서다.
+# extract/acode.py 의 table_idx 는 바깥 표만 세므로 **다른 색인 공간**이다.
+# 두 색인을 서로 조인하지 마라.
+#
+# 1단계 census(scripts/01_exception_census.py `_scan_tree`)와 같은
+# 판정법을 쓴다 — 같은 코퍼스에서 같은 수가 나와야 정책의 measured 와
+# 대조할 수 있다. 캡션 판정은 '진짜 표가 아닌 표'에만 적용하고,
+# 이웃은 "문서 어딘가"가 아니라 **바로 옆 형제 TABLE** 이다.
+
+_FOOT_TEXT_MAX = 300      # 각주 원문은 붙일 값이므로 남긴다 (자르되)
+
+
+def _shape_of(table, tree):
+    trs = [e for e in tree.own_nodes(table) if e.tag == 'TR']
+    rows = [r for r in ([c for c in tr.children if c.tag in tree.CELL_TAGS]
+                        for tr in trs) if r]
+    if not rows:
+        return None
+    return len(rows), max(len(r) for r in rows)
+
+
+def _sibling_tables(node, shapes):
+    """형제 순서에서 바로 앞/뒤의 TABLE. 없으면 None."""
+    sibs = [c for c in (node.parent.children if node.parent else [])
+            if c.tag == 'TABLE' and id(c) in shapes]
+    try:
+        i = sibs.index(node)
+    except ValueError:
+        return None, None
+    return (sibs[i - 1] if i > 0 else None,
+            sibs[i + 1] if i + 1 < len(sibs) else None)
+
+
+def unit_of(text):
+    """'(단위 : 천원)' → '천원'. 못 찾으면 None."""
+    import re as _re
+    m = _re.search(r'\(\s*단\s*위\s*[:：]\s*([^)]*)\)', text or '')
+    return m.group(1).strip() if m else None
+
+
+def scan(root, tree, value, pol=None):
+    """문서 트리 → E5/E6 판정 결과. 아무것도 바꾸지 않는다.
+
+    돌려주는 dict
+
+        n_tables / n_not_a_table      E5
+        unit / footnote               캡션 수와 이웃 분포 (census 와 같은 축)
+        attach                        **붙일 곳이 정해진 것만** 들어간다.
+                                      붙일 데가 없으면 여기 없다 —
+                                      각주의 45.2%가 그 경우다.
+
+    attach 한 항목
+        i     캡션 표의 table_idx
+        to    붙일 표의 table_idx
+        dir   'next' | 'prev'
+        kind  'unit' | 'footnote'
+        unit  단위 문자열 (kind='unit')
+        text  각주 원문 (kind='footnote', 잘림)
+    """
+    tables = [n for n in tree.walk(root) if n.tag == 'TABLE']
+    shapes = {}
+    idx = {}
+    for i, t in enumerate(tables):
+        s = _shape_of(t, tree)
+        if s is None:
+            continue                       # 행도 칸도 없는 것은 세지 않는다
+        shapes[id(t)] = s
+        idx[id(t)] = i
+
+    n_tab = len(shapes)
+    n_deg = sum(1 for s in shapes.values() if s[0] <= 1 or s[1] <= 1)
+
+    def real(node):
+        if node is None or id(node) not in shapes:
+            return False
+        r, c = shapes[id(node)]
+        return r > 1 and c > 1
+
+    counts = {'unit': dict(total=0, next_only=0, prev_only=0, both=0,
+                           neither=0, attached=0),
+              'footnote': dict(total=0, next_only=0, prev_only=0, both=0,
+                               neither=0, attached=0)}
+    attach = []
+
+    for t in tables:
+        if id(t) not in shapes:
+            continue
+        r, c = shapes[id(t)]
+        if r > 1 and c > 1:
+            continue                       # 진짜 표는 캡션이 아니다
+        txt = value.flat(tree.text(t))
+        kind = caption_kind(txt, pol)
+        if kind is None:
+            continue
+        prev, nxt = _sibling_tables(t, shapes)
+        pr, nx = real(prev), real(nxt)
+        cnt = counts[kind]
+        cnt['total'] += 1
+        if pr and nx:
+            cnt['both'] += 1
+        elif nx:
+            cnt['next_only'] += 1
+        elif pr:
+            cnt['prev_only'] += 1
+        else:
+            cnt['neither'] += 1
+
+        d = attach_direction(kind, pr, nx, pol)
+        if d is None:
+            continue                       # 붙일 데가 없다 — 만들어내지 않는다
+        target = nxt if d == 'next' else prev
+        cnt['attached'] += 1
+        rec = {'i': idx[id(t)], 'to': idx[id(target)], 'dir': d, 'kind': kind}
+        if kind == 'unit':
+            rec['unit'] = unit_of(txt)
+        else:
+            rec['text'] = txt[:_FOOT_TEXT_MAX]
+        attach.append(rec)
+
+    return {'n_tables': n_tab, 'n_not_a_table': n_deg,
+            'unit': counts['unit'], 'footnote': counts['footnote'],
+            'attach': attach}

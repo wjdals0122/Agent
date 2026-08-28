@@ -31,10 +31,27 @@
 
 `text` 는 임베딩·LLM 에 그대로 가는 문자열이고, 위 정보가 **본문 안에**
 들어간다. 메타데이터 필드로만 두면 임베딩이 못 본다.
+
+────────────────────────────────────────────────────────────────────────
+각주(※)와 기수 — 표와 같은 조각에 들어가야 하는 나머지 둘
+────────────────────────────────────────────────────────────────────────
+**각주**: `※ 상기 금액은 …` 은 바로 **앞 표**의 단서다(실측: 앞에만 31.8% vs
+뒤에만 10.0%). 그냥 문단으로 흘리면 표와 다른 조각으로 갈라져, 표만 검색해 온
+에이전트는 단서를 못 본다. 그래서 **바로 앞 조각이 표일 때만** 그 표에 붙인다 —
+각주의 45.2%는 양옆에 진짜 표가 없는 그냥 주석이라, 무조건 붙이면 없는 귀속을
+만들어낸다(E6 실측).
+
+**기수**: `제 17 기 1분기말` 이 언제인지는 다른 표에 적혀 있다. 3단계에서
+문서마다 만든 사전(`doc['periods']`, extract/periods.py)을 여기서 조각에 물려,
+조각 하나만 봐도 **언제의 숫자인지** 알 수 있게 한다. 못 이은 기수는 날짜 없이
+라벨만 남는다 — 지어내지 않는다.
 """
 import re
 
-__all__ = ['build_chunks', 'RE_UNIT_CAPTION', 'RE_NUMERIC_CELL']
+from extract import periods as per
+
+__all__ = ['build_chunks', 'RE_UNIT_CAPTION', 'RE_NUMERIC_CELL',
+           'RE_FOOTNOTE']
 
 RE_UNIT_CAPTION = re.compile(r'\(\s*단\s*위\s*[:：]\s*([^)]*)\)')
 # 본문 어디든 단위임이 분명한 형태. 맨 '원'·'주'·'건' 은 넣지 않는다 —
@@ -43,7 +60,12 @@ RE_UNIT_ANY = re.compile(
     r'단\s*위\s*[:：]|\(단위|\(원\)|\(주\)|\(%\)|백만원|천원|억원|만원|조원'
     r'|원\)|주\)|％|%\)|미\s*달러|USD|천주|백만주')
 RE_NUMERIC_CELL = re.compile(r'^-?\(?[\d,]{4,}\)?$')
-RE_PERIOD = re.compile(r'제\s*\d{1,3}\s*기')
+# 기수 표기. **어디서 끊을지**는 extract/periods.py 가 정한다 — 사전을 만든
+# 규칙과 조각에서 찾는 규칙이 다르면 같은 문서에서 두 답이 나온다.
+# ('제 17 기' 로만 끊으면 사전의 '제 17 기 1분기말' 과 안 이어진다.)
+from extract.periods import RE_PERIOD_FULL as RE_PERIOD
+# E6 각주. 정책(E6_footnote_caption)과 같은 모양이어야 한다.
+RE_FOOTNOTE = re.compile(r'^\s*[※*＊]')
 
 # 표가 이보다 길면 쪼갠다. 쪼갤 때 헤더와 문맥을 **매 조각에 다시 붙인다** —
 # 표 중간을 잘라 놓고 헤더를 안 주면 열이 무엇인지 알 수 없다.
@@ -72,6 +94,8 @@ def build_chunks(payload, part, doc_meta):
     doc = part.get('doc') or {}
     chunks = doc.get('chunks') or []
     structured = doc.get('structured') or {}
+    # E7 사전 — 3단계에서 이 문서 안의 날짜로만 만든 것이다.
+    pmap = (doc.get('periods') or {}).get('map') or {}
 
     # {XBRL} 그룹의 확신도를 표 단위로 물려주기 위한 색인.
     # 5단계에서 매긴 등급을 청크까지 끌고 와야 에이전트가 쓸 수 있다.
@@ -86,7 +110,16 @@ def build_chunks(payload, part, doc_meta):
     unit_src = None
     periods = []          # 최근에 본 기수 표기
 
-    def ctx_header(extra=None):
+    def period_dates():
+        """이 조각에 걸린 기수 표기 → 날짜. 못 이은 것은 넣지 않는다."""
+        got = {}
+        for lab in periods:
+            v = per.fmt(per.resolve(pmap, lab))
+            if v:
+                got[lab] = v
+        return got
+
+    def ctx_header(extra=None, pdates=None):
         """청크 본문 맨 앞에 붙는 문맥 줄. 임베딩이 보게 하려고 본문에 넣는다."""
         bits = [doc_meta.get('corp_name') or payload.get('corp_name') or '']
         if doc_meta.get('report_nm'):
@@ -99,12 +132,17 @@ def build_chunks(payload, part, doc_meta):
             parts_.append('> ' + ' > '.join(section))
         if unit:
             parts_.append('(단위: %s)' % unit)
+        # E7 — 기수가 언제인지. 라벨만 있으면 조각 하나로는 답할 수 없다.
+        if pdates:
+            parts_.append('(' + ' · '.join('%s = %s' % (k, v)
+                                           for k, v in pdates.items()) + ')')
         if extra:
             parts_.append(extra)
         return '\n'.join(parts_)
 
     def emit(kind, body, **kw):
-        text = ctx_header(kw.pop('extra', None))
+        pdates = period_dates()
+        text = ctx_header(kw.pop('extra', None), pdates)
         text = (text + '\n' + body) if text else body
         rec = {
             'chunk_id': '%s#%04d' % (part.get('part_key'), len(out)),
@@ -120,6 +158,7 @@ def build_chunks(payload, part, doc_meta):
             'unit': unit,
             'unit_source': unit_src,
             'periods': list(periods),
+            'period_dates': pdates,
             'kind': kind,
             'text': text,
             'n_chars': len(text),
@@ -157,6 +196,22 @@ def build_chunks(payload, part, doc_meta):
 
         if kind == 'p':
             text = c[1] or ''
+            # E6 각주 — 바로 앞 조각이 표일 때만 그 표에 붙인다.
+            # buf 가 비어 있어야 '바로 앞'이다. 사이에 문단이 끼면 그 각주는
+            # 표의 단서가 아니라 문단의 일부다. 붙일 데가 없으면 그냥
+            # 문단으로 흘린다 — 각주의 45.2%가 그 경우다(1단계 실측).
+            if (RE_FOOTNOTE.match(text) and not buf and out
+                    and out[-1]['kind'] == 'table'):
+                tgt = out[-1]
+                tgt['text'] = tgt['text'] + '\n' + text
+                tgt['n_chars'] = len(tgt['text'])
+                tgt.setdefault('footnotes', []).append(text)
+                # 각주가 단위를 들고 있는 경우가 있다 — 표에 물려준다.
+                if tgt.get('kind') == 'table' and not tgt.get('unit_known'):
+                    if RE_UNIT_ANY.search(text):
+                        tgt['unit_known'] = True
+                        tgt['unit_source'] = tgt.get('unit_source') or 'footnote'
+                continue
             m = RE_UNIT_CAPTION.search(text)
             if m:
                 # E6: 단위 캡션은 **다음** 표에 귀속된다 (실측 54.8% vs 0.2%)
