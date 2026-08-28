@@ -74,6 +74,9 @@ def main() -> int:
     mismatch = id_mismatch = 0
     row = 0
     limit = meta.get("limit")
+    # prepare 와 **같은 규칙으로** 걸러야 row 가 맞는다. 안 거르면 대체된 옛 문서만큼
+    # 밀려서 stored[row] 가 인덱스 범위를 넘는다.
+    skip_docs = set(meta.get("skipped_doc_ids") or ()) or paths.skipped_doc_ids()
     for path in paths.chunk_files():
         if limit and row >= limit:
             break
@@ -84,6 +87,8 @@ def main() -> int:
                 if not raw.strip():
                     continue
                 rec = orjson.loads(raw)
+                if rec.get("doc_id") in skip_docs:
+                    continue
                 if hashlib.sha1(rec["embedding_text"].encode()).hexdigest()[:16] != stored[row]:
                     mismatch += 1
                 if rec["chunk_id"] != stored_ids[row]:
@@ -161,7 +166,8 @@ def main() -> int:
 
     paths.REPORTS.mkdir(parents=True, exist_ok=True)
     (paths.REPORTS / "validation_vectors.md").write_text("\n".join(lines), encoding="utf-8")
-    print(f"\n[verify] data/reports/validation_vectors.md 기록 — 실패 {n_fail}건", flush=True)
+    rel = (paths.REPORTS / "validation_vectors.md").relative_to(paths.ROOT)
+    print(f"\n[verify] {rel} 기록 — 실패 {n_fail}건", flush=True)
     return 1 if n_fail else 0
 
 
