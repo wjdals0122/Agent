@@ -48,6 +48,7 @@ python -m src.eval.ask                     # 대화형
 | 임베딩 (4 GPU) | `bash scripts/run_embed.sh --max-length 1024 --batch-tokens 16384` |
 | 인덱스 검증 | `python -m src.index.verify_vectors` |
 | 단건 질의 | `python -m src.eval.ask "삼성전자의 주주환원 정책은?"` |
+| 팀 배포본 만들기 | `python scripts/10_package_index.py --out dist` |
 | 질문 세트 일괄 | `python -m src.eval.run_eval -k 5` |
 | 설정 그리드 비교 | `python -m src.eval.sweep` |
 

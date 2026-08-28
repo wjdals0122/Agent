@@ -42,3 +42,6 @@ reports/companies.txt
 *.pt
 *.pth
 *.zip
+
+# 배포 패키지 — scripts/10_package_index.py 가 만든다. 6GB.
+dist/
