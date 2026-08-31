@@ -1,0 +1,23 @@
+{
+  "n_rows": 20000,
+  "verify_seconds": 2.0,
+  "kiwi_load_seconds": 1.4,
+  "matrix_seconds": 0.2,
+  "rows_per_sec": 697.3,
+  "vocab_size": 142466,
+  "nnz": 2163448,
+  "k1": 1.5,
+  "b": 0.75,
+  "avg_doc_len": 257.71490478515625,
+  "limit": 20000,
+  "tokenize_seconds": 28.7,
+  "total_seconds": 32.3,
+  "peak_rss_gb": 1.18,
+  "rss_delta_gb": 1.13,
+  "built_at": "2026-08-30T11:43:56.622103+00:00",
+  "files": {
+    "bm25_csc.npz": 17878701,
+    "vocab.txt": 1367771,
+    "doc_len.npy": 80128
+  }
+}
