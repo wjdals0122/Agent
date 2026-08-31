@@ -1,0 +1,11 @@
+{
+  "n_rows": 614578,
+  "n_series_periodic": 897,
+  "n_series_with_correction": 135,
+  "n_stale_rows": 123739,
+  "n_excluded": 97223,
+  "n_preserved": 26516,
+  "n_searchable": 517355,
+  "n_series_codes": 1402,
+  "seconds": 20.5
+}
