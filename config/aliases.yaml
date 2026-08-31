@@ -1,0 +1,851 @@
+_note: 자동 생성. python -m src.search.aliases --build 로 다시 만든다. 데이터에 없는 별칭을 손으로 추가하지 말 것.
+companies:
+- corp_code: 00126380
+  stock_code: 005930
+  corp_name: 삼성전자
+  listed_name: 삼성전자
+  corp_eng_name: SAMSUNG ELECTRONICS CO,.LTD
+  aliases:
+  - (주)삼성전자
+  - SAMSUNG ELECTRONICS CO,.LTD
+  - 삼성전자
+  - 삼성전자(주)
+  - 삼성전자주식회사
+- corp_code: 00164779
+  stock_code: '000660'
+  corp_name: SK하이닉스
+  listed_name: SK하이닉스
+  corp_eng_name: SK hynix Inc.
+  aliases:
+  - (주)SK하이닉스
+  - SK hynix Inc.
+  - SK하이닉스
+  - SK하이닉스주식회사
+  - sk하이닉스
+  - 에스케이하이닉스(주)
+  - 에스케이하이닉스주식회사
+- corp_code: '00126371'
+  stock_code: 009150
+  corp_name: 삼성전기
+  listed_name: 삼성전기
+  corp_eng_name: SAMSUNG ELECTRO-MECHANICS CO.,LTD
+  aliases:
+  - (주)삼성전기
+  - SAMSUNG ELECTRO-MECHANICS CO.,LTD
+  - 삼성전기
+  - 삼성전기 주식회사
+  - 삼성전기(주)
+  - 삼성전기주식회사
+- corp_code: 00161383
+  stock_code: '042700'
+  corp_name: 한미반도체
+  listed_name: 한미반도체
+  corp_eng_name: HANMI Semiconductor CO., LTD.
+  aliases:
+  - (주)한미반도체
+  - HANMI Semiconductor CO., LTD.
+  - 한미반도체
+  - 한미반도체(주)
+  - 한미반도체주식회사
+- corp_code: 00105961
+  stock_code: '011070'
+  corp_name: LG이노텍
+  listed_name: LG이노텍
+  corp_eng_name: LG INNOTEK CO., LTD.
+  aliases:
+  - (주)LG이노텍
+  - LG INNOTEK CO., LTD.
+  - LG이노텍
+  - LG이노텍(주)
+  - LG이노텍주식회사
+  - 엘지이노텍(주)
+- corp_code: '00164742'
+  stock_code: 005380
+  corp_name: 현대자동차
+  listed_name: 현대차
+  corp_eng_name: HYUNDAI MOTOR CO
+  aliases:
+  - (주)현대자동차
+  - HYUNDAI MOTOR CO
+  - 현대자동차
+  - 현대자동차(주)
+  - 현대자동차주식회사
+  - 현대차
+- corp_code: '00106641'
+  stock_code: '000270'
+  corp_name: 기아
+  listed_name: 기아
+  corp_eng_name: KIA CORPORATION
+  aliases:
+  - (주)기아
+  - KIA CORPORATION
+  - 기아
+  - 기아 주식회사
+  - 기아(주)
+  - 기아주식회사
+- corp_code: 00164788
+  stock_code: '012330'
+  corp_name: 현대모비스
+  listed_name: 현대모비스
+  corp_eng_name: HYUNDAI MOBIS CO.,LTD
+  aliases:
+  - (주)현대모비스
+  - HYUNDAI MOBIS CO.,LTD
+  - 현대모비스
+  - 현대모비스(주)
+  - 현대모비스주식회사
+- corp_code: '00362441'
+  stock_code: '307950'
+  corp_name: 현대오토에버
+  listed_name: 현대오토에버
+  corp_eng_name: HYUNDAI AUTOEVER CORPORATION.
+  aliases:
+  - (주)현대오토에버
+  - HYUNDAI AUTOEVER CORPORATION.
+  - 현대오토에버
+  - 현대오토에버(주)
+  - 현대오토에버주식회사
+- corp_code: '01261644'
+  stock_code: '277810'
+  corp_name: 레인보우로보틱스
+  listed_name: 레인보우로보틱스
+  corp_eng_name: Rainbow Robotics
+  aliases:
+  - (주)레인보우로보틱스
+  - Rainbow Robotics
+  - 레인보우로보틱스
+  - 레인보우로보틱스주식회사
+  - 주식회사 레인보우로보틱스
+- corp_code: '01105153'
+  stock_code: '454910'
+  corp_name: 두산로보틱스
+  listed_name: 두산로보틱스
+  corp_eng_name: Doosan Robotics Inc.
+  aliases:
+  - (주)두산로보틱스
+  - Doosan Robotics Inc.
+  - 두산로보틱스
+  - 두산로보틱스 주식회사
+  - 두산로보틱스(주)
+  - 두산로보틱스주식회사
+- corp_code: '01515323'
+  stock_code: '373220'
+  corp_name: LG에너지솔루션
+  listed_name: LG에너지솔루션
+  corp_eng_name: LG ENERGY SOLUTION, LTD.
+  aliases:
+  - (주)LG에너지솔루션
+  - (주)엘지에너지솔루션
+  - LG ENERGY SOLUTION, LTD.
+  - LG에너지솔루션
+  - LG에너지솔루션주식회사
+  - ㈜LG에너지솔루션
+- corp_code: '00126362'
+  stock_code: '006400'
+  corp_name: 삼성SDI
+  listed_name: 삼성SDI
+  corp_eng_name: SAMSUNG SDI CO.,LTD
+  aliases:
+  - (주)삼성SDI
+  - SAMSUNG SDI CO.,LTD
+  - 삼성SDI
+  - 삼성SDI(주)
+  - 삼성SDI주식회사
+  - 삼성sdi
+  - 삼성에스디아이
+  - 삼성에스디아이(주)
+- corp_code: '01160363'
+  stock_code: '247540'
+  corp_name: 에코프로비엠
+  listed_name: 에코프로비엠
+  corp_eng_name: ECOPRO BM CO.,LTD.
+  aliases:
+  - (주)에코프로비엠
+  - ECOPRO BM CO.,LTD.
+  - 에코프로비엠
+  - 에코프로비엠주식회사
+  - 주식회사 에코프로비엠
+- corp_code: 00155319
+  stock_code: 005490
+  corp_name: POSCO홀딩스
+  listed_name: POSCO홀딩스
+  corp_eng_name: POSCO Holdings Inc.
+  aliases:
+  - (주)POSCO홀딩스
+  - POSCO Holdings Inc.
+  - POSCO홀딩스
+  - POSCO홀딩스주식회사
+  - 포스코홀딩스
+  - 포스코홀딩스 주식회사
+  - 포스코홀딩스(주)
+  - 포스코홀딩스주식회사
+- corp_code: 00145880
+  stock_code: '004020'
+  corp_name: 현대제철
+  listed_name: 현대제철
+  corp_eng_name: HYUNDAI STEEL COMPANY
+  aliases:
+  - (주)현대제철
+  - HYUNDAI STEEL COMPANY
+  - 현대제철
+  - 현대제철 주식회사
+  - 현대제철(주)
+  - 현대제철주식회사
+- corp_code: 00106669
+  stock_code: '001430'
+  corp_name: 세아베스틸지주
+  listed_name: 세아베스틸지주
+  corp_eng_name: SeAH Besteel Holdings Corporation
+  aliases:
+  - (주)세아베스틸지주
+  - SeAH Besteel Holdings Corporation
+  - 세아베스틸지주
+  - 세아베스틸지주주식회사
+- corp_code: 00102858
+  stock_code: '010130'
+  corp_name: 고려아연
+  listed_name: 고려아연
+  corp_eng_name: KOREA ZINC INC
+  aliases:
+  - (주)고려아연
+  - KOREA ZINC INC
+  - 고려아연
+  - 고려아연(주)
+  - 고려아연주식회사
+- corp_code: '00126256'
+  stock_code: 032830
+  corp_name: 삼성생명
+  listed_name: 삼성생명
+  corp_eng_name: Samsung Life Insurance co., Ltd
+  aliases:
+  - (주)삼성생명
+  - Samsung Life Insurance co., Ltd
+  - 삼성생명
+  - 삼성생명보험
+  - 삼성생명보험(주)
+  - 삼성생명보험주식회사
+  - 삼성생명주식회사
+- corp_code: 00688996
+  stock_code: '105560'
+  corp_name: KB금융
+  listed_name: KB금융
+  corp_eng_name: KB Financial Group Inc.
+  aliases:
+  - (주)KB금융
+  - (주)KB금융지주
+  - KB Financial Group Inc.
+  - KB금융
+  - KB금융주식회사
+  - KB금융지주
+  - 주식회사 KB금융지주
+- corp_code: 00382199
+  stock_code: '055550'
+  corp_name: 신한지주
+  listed_name: 신한지주
+  corp_eng_name: SHINHAN FINANCIAL GROUP CO.,LTD
+  aliases:
+  - (주) 신한금융지주회사
+  - (주)신한금융지주회사
+  - (주)신한지주
+  - SHINHAN FINANCIAL GROUP CO.,LTD
+  - 신한금융지주회사
+  - 신한지주
+  - 신한지주주식회사
+- corp_code: 00547583
+  stock_code: 086790
+  corp_name: 하나금융지주
+  listed_name: 하나금융지주
+  corp_eng_name: Hana Financial Group Inc.
+  aliases:
+  - (주)하나금융지주
+  - Hana Financial Group Inc.
+  - 하나금융지주
+  - 하나금융지주주식회사
+- corp_code: 00139214
+  stock_code: 000810
+  corp_name: 삼성화재해상보험
+  listed_name: 삼성화재
+  corp_eng_name: SAMSUNG FIRE & MARINE INSURANCE CO.,LTD
+  aliases:
+  - (주)삼성화재해상보험
+  - SAMSUNG FIRE & MARINE INSURANCE CO.,LTD
+  - 삼성화재
+  - 삼성화재해상보험
+  - 삼성화재해상보험(주)
+  - 삼성화재해상보험주식회사
+- corp_code: 01350869
+  stock_code: '316140'
+  corp_name: 우리금융지주
+  listed_name: 우리금융지주
+  corp_eng_name: Woori Financial Group Inc.
+  aliases:
+  - (주)우리금융지주
+  - Woori Financial Group Inc.
+  - 우리금융지주
+  - 우리금융지주주식회사
+- corp_code: '00111722'
+  stock_code: 006800
+  corp_name: 미래에셋증권
+  listed_name: 미래에셋증권
+  corp_eng_name: MIRAE ASSET SECURITIES CO.,LTD.
+  aliases:
+  - (주)미래에셋증권
+  - MIRAE ASSET SECURITIES CO.,LTD.
+  - 미래에셋증권
+  - 미래에셋증권(주)
+  - 미래에셋증권주식회사
+- corp_code: 00860332
+  stock_code: '138040'
+  corp_name: 메리츠금융지주
+  listed_name: 메리츠금융지주
+  corp_eng_name: MERITZ FINANCIAL GROUP INC.
+  aliases:
+  - (주)메리츠금융지주
+  - MERITZ FINANCIAL GROUP INC.
+  - 메리츠금융지주
+  - 메리츠금융지주주식회사
+- corp_code: 00266961
+  stock_code: '035420'
+  corp_name: NAVER
+  listed_name: NAVER
+  corp_eng_name: NAVER Corporation
+  aliases:
+  - (주)NAVER
+  - NAVER
+  - NAVER Corporation
+  - NAVER주식회사
+  - 네이버
+  - 네이버 주식회사
+  - 네이버(주)
+- corp_code: 00258801
+  stock_code: '035720'
+  corp_name: 카카오
+  listed_name: 카카오
+  corp_eng_name: Kakao Corp.
+  aliases:
+  - (주)카카오
+  - Kakao Corp.
+  - 주식회사 카카오
+  - 카카오
+  - 카카오주식회사
+- corp_code: 00139834
+  stock_code: '064400'
+  corp_name: LG씨엔에스
+  listed_name: LG씨엔에스
+  corp_eng_name: LG CNS Co., Ltd.
+  aliases:
+  - (주)LG씨엔에스
+  - (주)엘지씨엔에스
+  - LG CNS Co., Ltd.
+  - LG씨엔에스
+  - LG씨엔에스주식회사
+  - 엘지씨엔에스
+  - 주식회사 엘지씨엔에스
+- corp_code: 00159023
+  stock_code: '017670'
+  corp_name: SK텔레콤
+  listed_name: SK텔레콤
+  corp_eng_name: SK TELECOM CO.,LTD
+  aliases:
+  - (주)SK텔레콤
+  - SK TELECOM CO.,LTD
+  - SK텔레콤
+  - SK텔레콤(주)
+  - SK텔레콤주식회사
+  - 에스케이텔레콤(주)
+- corp_code: 00190321
+  stock_code: '030200'
+  corp_name: 케이티
+  listed_name: KT
+  corp_eng_name: KT CORPORATION
+  aliases:
+  - (주) 케이티
+  - (주)케이티
+  - KT
+  - KT CORPORATION
+  - 주식회사 케이티
+  - 주식회사케이티
+  - 케이티
+  - 케이티주식회사
+- corp_code: '00231363'
+  stock_code: '032640'
+  corp_name: LG유플러스
+  listed_name: LG유플러스
+  corp_eng_name: LG Uplus Corp
+  aliases:
+  - (주) 엘지유플러스
+  - (주)LG유플러스
+  - (주)엘지유플러스
+  - LG Uplus Corp
+  - LG유플러스
+  - LG유플러스주식회사
+- corp_code: 00760971
+  stock_code: '259960'
+  corp_name: 크래프톤
+  listed_name: 크래프톤
+  corp_eng_name: KRAFTON, Inc.
+  aliases:
+  - (주)크래프톤
+  - KRAFTON, Inc.
+  - ㈜크래프톤
+  - 크래프톤
+  - 크래프톤주식회사
+- corp_code: '00261443'
+  stock_code: '036570'
+  corp_name: NC
+  listed_name: 엔씨소프트
+  corp_eng_name: NC Corporation
+  aliases:
+  - (주)NC
+  - (주)엔씨
+  - (주)엔씨소프트
+  - NC
+  - NC Corporation
+  - NC주식회사
+  - 엔씨소프트
+  - 주식회사 엔씨소프트
+- corp_code: 01384787
+  stock_code: '462870'
+  corp_name: 시프트업
+  listed_name: 시프트업
+  corp_eng_name: SHIFT UP Corporation.
+  aliases:
+  - (주)시프트업
+  - SHIFT UP Corporation.
+  - 시프트업
+  - 시프트업주식회사
+  - 주식회사 시프트업
+- corp_code: 00877059
+  stock_code: '207940'
+  corp_name: 삼성바이오로직스
+  listed_name: 삼성바이오로직스
+  corp_eng_name: SAMSUNG BIOLOGICS CO.,LTD.
+  aliases:
+  - (주)삼성바이오로직스
+  - SAMSUNG BIOLOGICS CO.,LTD.
+  - 삼성바이오로직스
+  - 삼성바이오로직스 주식회사
+  - 삼성바이오로직스(주)
+  - 삼성바이오로직스주식회사
+- corp_code: '00413046'
+  stock_code: 068270
+  corp_name: 셀트리온
+  listed_name: 셀트리온
+  corp_eng_name: Celltrion, Inc.
+  aliases:
+  - (주)셀트리온
+  - Celltrion, Inc.
+  - 셀트리온
+  - 셀트리온주식회사
+  - 주식회사 셀트리온
+- corp_code: 00989619
+  stock_code: '196170'
+  corp_name: 알테오젠
+  listed_name: 알테오젠
+  corp_eng_name: Alteogen Inc.
+  aliases:
+  - (주)알테오젠
+  - Alteogen Inc.
+  - 알테오젠
+  - 알테오젠주식회사
+  - 주식회사 알테오젠
+- corp_code: 00828497
+  stock_code: '128940'
+  corp_name: 한미약품
+  listed_name: 한미약품
+  corp_eng_name: Hanmi Pharm. Co., Ltd.
+  aliases:
+  - (주)한미약품
+  - Hanmi Pharm. Co., Ltd.
+  - 한미약품
+  - 한미약품 주식회사
+  - 한미약품(주)
+  - 한미약품주식회사
+- corp_code: 00970453
+  stock_code: '214450'
+  corp_name: 파마리서치
+  listed_name: 파마리서치
+  corp_eng_name: PharmaResearch Co., Ltd.
+  aliases:
+  - (주) 파마리서치
+  - (주)파마리서치
+  - PharmaResearch Co., Ltd.
+  - 파마리서치
+  - 파마리서치주식회사
+- corp_code: '01376715'
+  stock_code: '347850'
+  corp_name: 디앤디파마텍
+  listed_name: 디앤디파마텍
+  corp_eng_name: D&D Pharmatech Inc.
+  aliases:
+  - (주) 디앤디파마텍
+  - (주)디앤디파마텍
+  - D&D Pharmatech Inc.
+  - 디앤디파마텍
+  - 디앤디파마텍주식회사
+  - 주식회사 디앤디파마텍
+  - 주식회사디앤디파마텍
+- corp_code: 01390344
+  stock_code: '329180'
+  corp_name: HD현대중공업
+  listed_name: HD현대중공업
+  corp_eng_name: HD HYUNDAI HEAVY INDUSTRIES CO.,LTD.
+  aliases:
+  - (주)HD현대중공업
+  - HD HYUNDAI HEAVY INDUSTRIES CO.,LTD.
+  - HD현대중공업
+  - HD현대중공업주식회사
+  - 에이치디현대중공업
+  - 에이치디현대중공업 주식회사
+  - 에이치디현대중공업(주)
+  - 현대중공업
+  - 현대중공업(주)
+- corp_code: '00111704'
+  stock_code: '042660'
+  corp_name: 한화오션
+  listed_name: 한화오션
+  corp_eng_name: Hanwha Ocean Co., Ltd.
+  aliases:
+  - (주)한화오션
+  - Hanwha Ocean Co., Ltd.
+  - 대우조선해양
+  - 대우조선해양(주)
+  - 한화오션
+  - 한화오션 주식회사
+  - 한화오션(주)
+  - 한화오션주식회사
+- corp_code: 00126478
+  stock_code: '010140'
+  corp_name: 삼성중공업
+  listed_name: 삼성중공업
+  corp_eng_name: SAMSUNG HEAVY INDUSTRIES CO.,LTD
+  aliases:
+  - (주)삼성중공업
+  - SAMSUNG HEAVY INDUSTRIES CO.,LTD
+  - 삼성중공업
+  - 삼성중공업(주)
+  - 삼성중공업주식회사
+- corp_code: 00159616
+  stock_code: '034020'
+  corp_name: 두산에너빌리티
+  listed_name: 두산에너빌리티
+  corp_eng_name: DOOSAN ENERBILITY CO., LTD.
+  aliases:
+  - (주)두산에너빌리티
+  - DOOSAN ENERBILITY CO., LTD.
+  - 두산에너빌리티
+  - 두산에너빌리티 주식회사
+  - 두산에너빌리티(주)
+  - 두산에너빌리티주식회사
+- corp_code: 00159209
+  stock_code: 052690
+  corp_name: 한전기술
+  listed_name: 한전기술
+  corp_eng_name: KEPCO Engineering & Construction Company, Inc
+  aliases:
+  - (주)한전기술
+  - KEPCO Engineering & Construction Company, Inc
+  - 한국전력기술
+  - 한국전력기술 (주)
+  - 한국전력기술(주)
+  - 한전기술
+  - 한전기술주식회사
+- corp_code: '00231044'
+  stock_code: 032820
+  corp_name: 우리기술
+  listed_name: 우리기술
+  corp_eng_name: Woori Technology, Incorporation
+  aliases:
+  - (주)우리기술
+  - Woori Technology, Incorporation
+  - 우리기술
+  - 우리기술주식회사
+  - 주식회사 우리기술
+- corp_code: '00126566'
+  stock_code: '012450'
+  corp_name: 한화에어로스페이스
+  listed_name: 한화에어로스페이스
+  corp_eng_name: HANWHA AEROSPACE CO., LTD.
+  aliases:
+  - (주)한화에어로스페이스
+  - HANWHA AEROSPACE CO., LTD.
+  - 한화에어로스페이스
+  - 한화에어로스페이스(주)
+  - 한화에어로스페이스주식회사
+- corp_code: 00302926
+  stock_code: '064350'
+  corp_name: 현대로템
+  listed_name: 현대로템
+  corp_eng_name: Hyundai-Rotem Co.
+  aliases:
+  - (주)현대로템
+  - Hyundai-Rotem Co.
+  - 현대로템
+  - 현대로템 주식회사
+  - 현대로템(주)
+  - 현대로템주식회사
+- corp_code: 00503668
+  stock_code: 079550
+  corp_name: LIG디펜스앤에어로스페이스
+  listed_name: LIG넥스원
+  corp_eng_name: LIG Defense&Aerospace Co., Ltd.
+  aliases:
+  - (주)LIG디펜스앤에어로스페이스
+  - LIG Defense&Aerospace Co., Ltd.
+  - LIG넥스원
+  - LIG디펜스앤에어로스페이스
+  - LIG디펜스앤에어로스페이스주식회사
+  - 엘아이지넥스원
+  - 엘아이지넥스원 주식회사
+  - 엘아이지넥스원(주)
+  - 엘아이지넥스원주식회사
+  - 엘아이지디펜스앤에어로스페이스 주식회사
+- corp_code: 00309503
+  stock_code: 047810
+  corp_name: 한국항공우주
+  listed_name: 한국항공우주
+  corp_eng_name: KOREA AEROSPACE INDUSTRIES, LTD.
+  aliases:
+  - (주)한국항공우주
+  - KOREA AEROSPACE INDUSTRIES, LTD.
+  - 한국항공우주
+  - 한국항공우주산업
+  - 한국항공우주산업(주)
+  - 한국항공우주산업주식회사
+  - 한국항공우주주식회사
+- corp_code: 00583424
+  stock_code: 090430
+  corp_name: 아모레퍼시픽
+  listed_name: 아모레퍼시픽
+  corp_eng_name: AMOREPACIFIC CORP.
+  aliases:
+  - (주)아모레퍼시픽
+  - AMOREPACIFIC CORP.
+  - 아모레퍼시픽
+  - 아모레퍼시픽주식회사
+  - 주식회사 아모레퍼시픽
+- corp_code: '00356370'
+  stock_code: 051900
+  corp_name: LG생활건강
+  listed_name: LG생활건강
+  corp_eng_name: LG H&H Co., Ltd.
+  aliases:
+  - (주)LG생활건강
+  - (주)엘지생활건강
+  - LG H&H Co., Ltd.
+  - LG생활건강
+  - LG생활건강주식회사
+- corp_code: '00635134'
+  stock_code: 097950
+  corp_name: CJ제일제당
+  listed_name: CJ제일제당
+  corp_eng_name: CJ CHEILJEDANG CORP.
+  aliases:
+  - (주)CJ제일제당
+  - CJ CHEILJEDANG CORP.
+  - CJ제일제당
+  - CJ제일제당 주식회사
+  - CJ제일제당(주)
+  - CJ제일제당주식회사
+  - 씨제이제일제당(주)
+- corp_code: 00872984
+  stock_code: '139480'
+  corp_name: 이마트
+  listed_name: 이마트
+  corp_eng_name: E-MART Inc.
+  aliases:
+  - (주)이마트
+  - E-MART Inc.
+  - 이마트
+  - 이마트주식회사
+  - 주식회사 이마트
+- corp_code: 00164478
+  stock_code: '000720'
+  corp_name: 현대건설
+  listed_name: 현대건설
+  corp_eng_name: HYUNDAI ENGINEERING & CONSTRUCTION CO.,LTD
+  aliases:
+  - (주)현대건설
+  - HYUNDAI ENGINEERING & CONSTRUCTION CO.,LTD
+  - 현대건설
+  - 현대건설 주식회사
+  - 현대건설(주)
+  - 현대건설주식회사
+- corp_code: 00126308
+  stock_code: 028050
+  corp_name: 삼성E&A
+  listed_name: 삼성E&A
+  corp_eng_name: SAMSUNG E&A CO.,LTD
+  aliases:
+  - (주)삼성E&A
+  - SAMSUNG E&A CO.,LTD
+  - 삼성E&A
+  - 삼성E&A주식회사
+  - 삼성엔지니어링
+  - 삼성엔지니어링(주)
+  - 삼성이앤에이
+  - 삼성이앤에이(주)
+- corp_code: '00124540'
+  stock_code: '047040'
+  corp_name: 대우건설
+  listed_name: 대우건설
+  corp_eng_name: DAEWOO ENGINEERING & CONSTRUCTION CO.,LTD
+  aliases:
+  - (주)대우건설
+  - DAEWOO ENGINEERING & CONSTRUCTION CO.,LTD
+  - 대우건설
+  - 대우건설주식회사
+- corp_code: '00164645'
+  stock_code: '011200'
+  corp_name: HMM
+  listed_name: HMM
+  corp_eng_name: HMM CO.,LTD
+  aliases:
+  - (주)HMM
+  - HMM
+  - HMM CO.,LTD
+  - HMM주식회사
+  - 에이치엠엠
+  - 에이치엠엠 주식회사
+  - 에이치엠엠(주)
+  - 에이치엠엠㈜
+  - 에이치엠엠주식회사
+- corp_code: 00360595
+  stock_code: 086280
+  corp_name: 현대글로비스
+  listed_name: 현대글로비스
+  corp_eng_name: HYUNDAI GLOVIS Co., LTD.
+  aliases:
+  - (주)현대글로비스
+  - HYUNDAI GLOVIS Co., LTD.
+  - 현대글로비스
+  - 현대글로비스(주)
+  - 현대글로비스주식회사
+- corp_code: 00105855
+  stock_code: '010120'
+  corp_name: 엘에스일렉트릭
+  listed_name: LS ELECTRIC
+  corp_eng_name: LS ELECTRIC CO., LTD
+  aliases:
+  - (주)엘에스일렉트릭
+  - LS ELECTRIC
+  - LS ELECTRIC CO., LTD
+  - 엘에스일렉트릭
+  - 엘에스일렉트릭 주식회사
+  - 엘에스일렉트릭(주)
+  - 엘에스일렉트릭주식회사
+- corp_code: 01205851
+  stock_code: '267260'
+  corp_name: HD현대일렉트릭
+  listed_name: HD현대일렉트릭
+  corp_eng_name: HD HYUNDAI ELECTRIC CO.,LTD
+  aliases:
+  - (주)HD현대일렉트릭
+  - HD HYUNDAI ELECTRIC CO.,LTD
+  - HD현대일렉트릭
+  - HD현대일렉트릭㈜
+  - HD현대일렉트릭주식회사
+  - 에이치디현대일렉트릭
+  - 에이치디현대일렉트릭 주식회사
+  - 에이치디현대일렉트릭(주)
+  - 에이치디현대일렉트릭㈜
+  - 현대일렉트릭
+  - 현대일렉트릭앤에너지시스템
+  - 현대일렉트릭앤에너지시스템(주)
+- corp_code: '01316245'
+  stock_code: '298040'
+  corp_name: 효성중공업
+  listed_name: 효성중공업
+  corp_eng_name: Hyosung Heavy Industries Corporation
+  aliases:
+  - (주)효성중공업
+  - Hyosung Heavy Industries Corporation
+  - 효성중공업
+  - 효성중공업 주식회사
+  - 효성중공업(주)
+  - 효성중공업주식회사
+- corp_code: '00162461'
+  stock_code: 009830
+  corp_name: 한화솔루션
+  listed_name: 한화솔루션
+  corp_eng_name: HANWHA SOLUTIONS CORPORATION
+  aliases:
+  - (주)한화솔루션
+  - HANWHA SOLUTIONS CORPORATION
+  - 한화솔루션
+  - 한화솔루션(주)
+  - 한화솔루션주식회사
+- corp_code: 00148896
+  stock_code: '010060'
+  corp_name: OCI홀딩스
+  listed_name: OCI홀딩스
+  corp_eng_name: OCI Holdings Company Ltd.
+  aliases:
+  - (주)OCI홀딩스
+  - OCI
+  - OCI Holdings Company Ltd.
+  - OCI(주)
+  - OCI주식회사
+  - OCI홀딩스
+  - OCI홀딩스(주)
+  - OCI홀딩스주식회사
+  - 오씨아이홀딩스
+- corp_code: '01412725'
+  stock_code: '336260'
+  corp_name: 두산퓨얼셀
+  listed_name: 두산퓨얼셀
+  corp_eng_name: Doosan Fuel Cell Co., Ltd.
+  aliases:
+  - (주)두산퓨얼셀
+  - Doosan Fuel Cell Co., Ltd.
+  - 두산퓨얼셀
+  - 두산퓨얼셀 주식회사
+  - 두산퓨얼셀(주)
+  - 두산퓨얼셀주식회사
+- corp_code: '01204056'
+  stock_code: '352820'
+  corp_name: 하이브
+  listed_name: 하이브
+  corp_eng_name: HYBE Co., Ltd.
+  aliases:
+  - (주)하이브
+  - HYBE Co., Ltd.
+  - 주식회사 하이브
+  - 하이브
+  - 하이브주식회사
+- corp_code: 00260930
+  stock_code: '041510'
+  corp_name: 에스엠
+  listed_name: 에스엠
+  corp_eng_name: SM ENTERTAINMENT CO., Ltd.
+  aliases:
+  - (주)에스엠
+  - (주)에스엠엔터테인먼트
+  - SM ENTERTAINMENT CO., Ltd.
+  - 에스엠
+  - 에스엠주식회사
+  - 주식회사 에스엠엔터테인먼트
+- corp_code: 00258689
+  stock_code: 035900
+  corp_name: JYP Ent
+  listed_name: JYP Ent
+  corp_eng_name: JYP Entertainment Corporation
+  aliases:
+  - (주)JYP Ent
+  - (주)제이와이피엔터테인먼트
+  - JYP Ent
+  - JYP Ent.
+  - JYP Entertainment Corporation
+  - JYP Ent주식회사
+  - 제이와이피엔터테인먼트
+  - 주식회사제이와이피엔터테인먼트
+- corp_code: 00613318
+  stock_code: '122870'
+  corp_name: 와이지엔터테인먼트
+  listed_name: 와이지엔터테인먼트
+  corp_eng_name: YG Entertainment Inc.
+  aliases:
+  - (주)와이지엔터테인먼트
+  - YG Entertainment Inc.
+  - 와이지엔터테인먼트
+  - 와이지엔터테인먼트주식회사

@@ -1,0 +1,1254 @@
+{
+ "KT": {
+  "total": 16603,
+  "embedded": 10278
+ },
+ "NC": {
+  "total": 46161,
+  "embedded": 41750
+ },
+ "기아": {
+  "total": 9572,
+  "embedded": 3270
+ },
+ "HMM": {
+  "total": 9093,
+  "embedded": 1686
+ },
+ "OCI": {
+  "total": 23422,
+  "embedded": 5513
+ },
+ "네이버": {
+  "total": 14950,
+  "embedded": 7521
+ },
+ "에스엠": {
+  "total": 12517,
+  "embedded": 12417
+ },
+ "이마트": {
+  "total": 10858,
+  "embedded": 4022
+ },
+ "카카오": {
+  "total": 34332,
+  "embedded": 27081
+ },
+ "케이티": {
+  "total": 12641,
+  "embedded": 11645
+ },
+ "하이브": {
+  "total": 6871,
+  "embedded": 3425
+ },
+ "현대차": {
+  "total": 7727,
+  "embedded": 7009
+ },
+ "KB금융": {
+  "total": 9412,
+  "embedded": 9311
+ },
+ "대우건설": {
+  "total": 2975,
+  "embedded": 317
+ },
+ "삼성전자": {
+  "total": 13927,
+  "embedded": 3602
+ },
+ "삼성화재": {
+  "total": 13871,
+  "embedded": 8511
+ },
+ "우리기술": {
+  "total": 960,
+  "embedded": 190
+ },
+ "한미약품": {
+  "total": 1706,
+  "embedded": 1172
+ },
+ "한화오션": {
+  "total": 8111,
+  "embedded": 2480
+ },
+ "현대건설": {
+  "total": 8102,
+  "embedded": 1759
+ },
+ "현대제철": {
+  "total": 5734,
+  "embedded": 600
+ },
+ "삼성생명": {
+  "total": 13811,
+  "embedded": 11989
+ },
+ "크래프톤": {
+  "total": 8862,
+  "embedded": 313
+ },
+ "현대로템": {
+  "total": 4981,
+  "embedded": 260
+ },
+ "고려아연": {
+  "total": 4761,
+  "embedded": 315
+ },
+ "삼성전기": {
+  "total": 3161,
+  "embedded": 133
+ },
+ "셀트리온": {
+  "total": 12288,
+  "embedded": 8000
+ },
+ "알테오젠": {
+  "total": 5576,
+  "embedded": 1479
+ },
+ "신한지주": {
+  "total": 152,
+  "embedded": 31
+ },
+ "시프트업": {
+  "total": 479,
+  "embedded": 66
+ },
+ "한전기술": {
+  "total": 430,
+  "embedded": 392
+ },
+ "LG이노텍": {
+  "total": 397,
+  "embedded": 47
+ },
+ "NAVER": {
+  "total": 3258,
+  "embedded": 24
+ },
+ "SK텔레콤": {
+  "total": 5313,
+  "embedded": 1170
+ },
+ "삼성SDI": {
+  "total": 2209,
+  "embedded": 103
+ },
+ "삼성중공업": {
+  "total": 4225,
+  "embedded": 221
+ },
+ "에이치엠엠": {
+  "total": 1905,
+  "embedded": 1176
+ },
+ "엔씨소프트": {
+  "total": 1468,
+  "embedded": 703
+ },
+ "한화솔루션": {
+  "total": 15645,
+  "embedded": 280
+ },
+ "현대자동차": {
+  "total": 12124,
+  "embedded": 2761
+ },
+ "현대중공업": {
+  "total": 4305,
+  "embedded": 3825
+ },
+ "두산퓨얼셀": {
+  "total": 8349,
+  "embedded": 172
+ },
+ "(주)엔씨": {
+  "total": 161,
+  "embedded": 156
+ },
+ "기아(주)": {
+  "total": 3353,
+  "embedded": 441
+ },
+ "현대모비스": {
+  "total": 8079,
+  "embedded": 305
+ },
+ "효성중공업": {
+  "total": 4303,
+  "embedded": 324
+ },
+ "㈜크래프톤": {
+  "total": 1804,
+  "embedded": 182
+ },
+ "삼성E&A": {
+  "total": 82,
+  "embedded": 26
+ },
+ "한미반도체": {
+  "total": 451,
+  "embedded": 109
+ },
+ "파마리서치": {
+  "total": 3541,
+  "embedded": 1450
+ },
+ "(주)에스엠": {
+  "total": 4815,
+  "embedded": 4806
+ },
+ "(주)이마트": {
+  "total": 665,
+  "embedded": 310
+ },
+ "CJ제일제당": {
+  "total": 891,
+  "embedded": 170
+ },
+ "KB금융지주": {
+  "total": 7787,
+  "embedded": 486
+ },
+ "네이버(주)": {
+  "total": 328,
+  "embedded": 96
+ },
+ "대우조선해양": {
+  "total": 813,
+  "embedded": 200
+ },
+ "미래에셋증권": {
+  "total": 29834,
+  "embedded": 1906
+ },
+ "아모레퍼시픽": {
+  "total": 4491,
+  "embedded": 1927
+ },
+ "에이치엠엠㈜": {
+  "total": 25,
+  "embedded": 7
+ },
+ "우리금융지주": {
+  "total": 4305,
+  "embedded": 1055
+ },
+ "하나금융지주": {
+  "total": 4010,
+  "embedded": 2207
+ },
+ "현대글로비스": {
+  "total": 3093,
+  "embedded": 219
+ },
+ "현대일렉트릭": {
+  "total": 1847,
+  "embedded": 1742
+ },
+ "(주)카카오": {
+  "total": 6782,
+  "embedded": 5705
+ },
+ "LG생활건강": {
+  "total": 1635,
+  "embedded": 71
+ },
+ "LG씨엔에스": {
+  "total": 25,
+  "embedded": 1
+ },
+ "LG유플러스": {
+  "total": 5865,
+  "embedded": 1791
+ },
+ "SK하이닉스": {
+  "total": 968,
+  "embedded": 153
+ },
+ "엘지씨엔에스": {
+  "total": 2053,
+  "embedded": 227
+ },
+ "LIG넥스원": {
+  "total": 1121,
+  "embedded": 497
+ },
+ "OCI(주)": {
+  "total": 1290,
+  "embedded": 518
+ },
+ "OCI홀딩스": {
+  "total": 157,
+  "embedded": 11
+ },
+ "삼성생명보험": {
+  "total": 9055,
+  "embedded": 1083
+ },
+ "한국항공우주": {
+  "total": 1524,
+  "embedded": 1436
+ },
+ "포스코홀딩스": {
+  "total": 2939,
+  "embedded": 395
+ },
+ "기아주식회사": {
+  "total": 157,
+  "embedded": 81
+ },
+ "두산로보틱스": {
+  "total": 1425,
+  "embedded": 216
+ },
+ "디앤디파마텍": {
+  "total": 727,
+  "embedded": 200
+ },
+ "한국전력기술": {
+  "total": 482,
+  "embedded": 225
+ },
+ "현대오토에버": {
+  "total": 2136,
+  "embedded": 285
+ },
+ "(주)케이티": {
+  "total": 424,
+  "embedded": 218
+ },
+ "삼성이앤에이": {
+  "total": 2884,
+  "embedded": 14
+ },
+ "에코프로비엠": {
+  "total": 1500,
+  "embedded": 279
+ },
+ "(주)하이브": {
+  "total": 343,
+  "embedded": 74
+ },
+ "(주)KB금융": {
+  "total": 117,
+  "embedded": 117
+ },
+ "HD현대중공업": {
+  "total": 2987,
+  "embedded": 1085
+ },
+ "JYP Ent": {
+  "total": 650,
+  "embedded": 614
+ },
+ "두산에너빌리티": {
+  "total": 11056,
+  "embedded": 585
+ },
+ "삼성전자(주)": {
+  "total": 5216,
+  "embedded": 109
+ },
+ "한화오션(주)": {
+  "total": 1624,
+  "embedded": 108
+ },
+ "현대제철(주)": {
+  "total": 851,
+  "embedded": 0
+ },
+ "엘아이지넥스원": {
+  "total": 3736,
+  "embedded": 22
+ },
+ "현대건설(주)": {
+  "total": 1482,
+  "embedded": 254
+ },
+ "(주)현대건설": {
+  "total": 4,
+  "embedded": 4
+ },
+ "OCI주식회사": {
+  "total": 183,
+  "embedded": 82
+ },
+ "오씨아이홀딩스": {
+  "total": 361,
+  "embedded": 5
+ },
+ "한미약품(주)": {
+  "total": 453,
+  "embedded": 339
+ },
+ "현대로템(주)": {
+  "total": 1728,
+  "embedded": 79
+ },
+ "(주)대우건설": {
+  "total": 1161,
+  "embedded": 12
+ },
+ "(주)크래프톤": {
+  "total": 24,
+  "embedded": 0
+ },
+ "고려아연(주)": {
+  "total": 540,
+  "embedded": 14
+ },
+ "삼성전기(주)": {
+  "total": 1608,
+  "embedded": 62
+ },
+ "기아 주식회사": {
+  "total": 66,
+  "embedded": 1
+ },
+ "삼성엔지니어링": {
+  "total": 1609,
+  "embedded": 104
+ },
+ "(주)삼성생명": {
+  "total": 129,
+  "embedded": 129
+ },
+ "메리츠금융지주": {
+  "total": 4041,
+  "embedded": 986
+ },
+ "삼성에스디아이": {
+  "total": 2398,
+  "embedded": 0
+ },
+ "(주)삼성전자": {
+  "total": 7,
+  "embedded": 0
+ },
+ "(주)셀트리온": {
+  "total": 6514,
+  "embedded": 3202
+ },
+ "(주)시프트업": {
+  "total": 59,
+  "embedded": 0
+ },
+ "세아베스틸지주": {
+  "total": 1035,
+  "embedded": 201
+ },
+ "(주)알테오젠": {
+  "total": 1027,
+  "embedded": 618
+ },
+ "엘에스일렉트릭": {
+  "total": 3612,
+  "embedded": 3438
+ },
+ "(주) 케이티": {
+  "total": 3,
+  "embedded": 0
+ },
+ "(주)우리기술": {
+  "total": 367,
+  "embedded": 0
+ },
+ "이마트주식회사": {
+  "total": 1,
+  "embedded": 0
+ },
+ "(주)현대제철": {
+  "total": 3,
+  "embedded": 0
+ },
+ "주식회사케이티": {
+  "total": 1,
+  "embedded": 1
+ },
+ "(주)한미약품": {
+  "total": 13,
+  "embedded": 13
+ },
+ "(주)한전기술": {
+  "total": 6,
+  "embedded": 6
+ },
+ "(주)한화오션": {
+  "total": 2,
+  "embedded": 2
+ },
+ "HD현대일렉트릭": {
+  "total": 1442,
+  "embedded": 47
+ },
+ "LG에너지솔루션": {
+  "total": 1766,
+  "embedded": 386
+ },
+ "삼성SDI(주)": {
+  "total": 262,
+  "embedded": 102
+ },
+ "삼성바이오로직스": {
+  "total": 3075,
+  "embedded": 308
+ },
+ "삼성중공업(주)": {
+  "total": 2517,
+  "embedded": 0
+ },
+ "에이치엠엠(주)": {
+  "total": 300,
+  "embedded": 25
+ },
+ "주식회사 카카오": {
+  "total": 1416,
+  "embedded": 938
+ },
+ "한화솔루션(주)": {
+  "total": 7330,
+  "embedded": 1669
+ },
+ "한화오션주식회사": {
+  "total": 372,
+  "embedded": 120
+ },
+ "현대자동차(주)": {
+  "total": 3904,
+  "embedded": 982
+ },
+ "현대중공업(주)": {
+  "total": 221,
+  "embedded": 184
+ },
+ "신한금융지주회사": {
+  "total": 1267,
+  "embedded": 290
+ },
+ "엘지이노텍(주)": {
+  "total": 163,
+  "embedded": 4
+ },
+ "(주)엔씨소프트": {
+  "total": 58,
+  "embedded": 4
+ },
+ "LG이노텍(주)": {
+  "total": 155,
+  "embedded": 0
+ },
+ "네이버 주식회사": {
+  "total": 1616,
+  "embedded": 197
+ },
+ "삼성화재해상보험": {
+  "total": 3054,
+  "embedded": 417
+ },
+ "주식회사 이마트": {
+  "total": 2486,
+  "embedded": 1374
+ },
+ "한국항공우주산업": {
+  "total": 1311,
+  "embedded": 202
+ },
+ "현대모비스(주)": {
+  "total": 2616,
+  "embedded": 375
+ },
+ "효성중공업(주)": {
+  "total": 2039,
+  "embedded": 412
+ },
+ "SK텔레콤(주)": {
+  "total": 791,
+  "embedded": 281
+ },
+ "고려아연주식회사": {
+  "total": 126,
+  "embedded": 41
+ },
+ "(주)두산퓨얼셀": {
+  "total": 21,
+  "embedded": 0
+ },
+ "두산퓨얼셀(주)": {
+  "total": 2516,
+  "embedded": 846
+ },
+ "레인보우로보틱스": {
+  "total": 493,
+  "embedded": 85
+ },
+ "주식회사 케이티": {
+  "total": 390,
+  "embedded": 137
+ },
+ "삼성전자주식회사": {
+  "total": 1291,
+  "embedded": 370
+ },
+ "삼성생명주식회사": {
+  "total": 10,
+  "embedded": 0
+ },
+ "삼성전기주식회사": {
+  "total": 125,
+  "embedded": 58
+ },
+ "POSCO홀딩스": {
+  "total": 3,
+  "embedded": 0
+ },
+ "주식회사 하이브": {
+  "total": 3117,
+  "embedded": 916
+ },
+ "(주)파마리서치": {
+  "total": 263,
+  "embedded": 173
+ },
+ "JYP Ent.": {
+  "total": 36,
+  "embedded": 0
+ },
+ "한미반도체(주)": {
+  "total": 115,
+  "embedded": 0
+ },
+ "한미약품주식회사": {
+  "total": 88,
+  "embedded": 24
+ },
+ "현대건설주식회사": {
+  "total": 149,
+  "embedded": 58
+ },
+ "현대제철주식회사": {
+  "total": 15,
+  "embedded": 1
+ },
+ "(주)효성중공업": {
+  "total": 248,
+  "embedded": 248
+ },
+ "(주)KB금융지주": {
+  "total": 117,
+  "embedded": 0
+ },
+ "(주)아모레퍼시픽": {
+  "total": 3024,
+  "embedded": 1390
+ },
+ "CJ제일제당(주)": {
+  "total": 241,
+  "embedded": 3
+ },
+ "HD현대일렉트릭㈜": {
+  "total": 843,
+  "embedded": 109
+ },
+ "대우조선해양(주)": {
+  "total": 86,
+  "embedded": 25
+ },
+ "에이치디현대중공업": {
+  "total": 498,
+  "embedded": 157
+ },
+ "에이치엠엠주식회사": {
+  "total": 3,
+  "embedded": 2
+ },
+ "한화오션 주식회사": {
+  "total": 451,
+  "embedded": 16
+ },
+ "현대글로비스(주)": {
+  "total": 1444,
+  "embedded": 0
+ },
+ "(주)LG생활건강": {
+  "total": 1294,
+  "embedded": 36
+ },
+ "(주)LG씨엔에스": {
+  "total": 9,
+  "embedded": 0
+ },
+ "(주)LG유플러스": {
+  "total": 685,
+  "embedded": 466
+ },
+ "(주)엘지생활건강": {
+  "total": 990,
+  "embedded": 5
+ },
+ "(주)엘지씨엔에스": {
+  "total": 1295,
+  "embedded": 141
+ },
+ "(주)엘지유플러스": {
+  "total": 920,
+  "embedded": 34
+ },
+ "㈜LG에너지솔루션": {
+  "total": 761,
+  "embedded": 238
+ },
+ "한화에어로스페이스": {
+  "total": 7859,
+  "embedded": 313
+ },
+ "LG이노텍주식회사": {
+  "total": 18,
+  "embedded": 0
+ },
+ "OCI홀딩스(주)": {
+  "total": 141,
+  "embedded": 72
+ },
+ "(주)우리금융지주": {
+  "total": 233,
+  "embedded": 42
+ },
+ "(주)하나금융지주": {
+  "total": 160,
+  "embedded": 69
+ },
+ "SK텔레콤주식회사": {
+  "total": 793,
+  "embedded": 6
+ },
+ "미래에셋증권(주)": {
+  "total": 371,
+  "embedded": 154
+ },
+ "포스코홀딩스(주)": {
+  "total": 257,
+  "embedded": 135
+ },
+ "(주)디앤디파마텍": {
+  "total": 30,
+  "embedded": 3
+ },
+ "두산로보틱스(주)": {
+  "total": 463,
+  "embedded": 155
+ },
+ "삼성생명보험(주)": {
+  "total": 3739,
+  "embedded": 63
+ },
+ "현대자동차주식회사": {
+  "total": 159,
+  "embedded": 73
+ },
+ "삼성SDI주식회사": {
+  "total": 76,
+  "embedded": 38
+ },
+ "삼성이앤에이(주)": {
+  "total": 1800,
+  "embedded": 0
+ },
+ "(주)에코프로비엠": {
+  "total": 262,
+  "embedded": 98
+ },
+ "삼성중공업주식회사": {
+  "total": 149,
+  "embedded": 52
+ },
+ "주식회사 셀트리온": {
+  "total": 553,
+  "embedded": 284
+ },
+ "주식회사 시프트업": {
+  "total": 155,
+  "embedded": 59
+ },
+ "와이지엔터테인먼트": {
+  "total": 596,
+  "embedded": 245
+ },
+ "주식회사 알테오젠": {
+  "total": 402,
+  "embedded": 221
+ },
+ "주식회사 우리기술": {
+  "total": 145,
+  "embedded": 54
+ },
+ "(주) 파마리서치": {
+  "total": 157,
+  "embedded": 58
+ },
+ "한국전력기술(주)": {
+  "total": 172,
+  "embedded": 10
+ },
+ "한미약품 주식회사": {
+  "total": 82,
+  "embedded": 40
+ },
+ "한화솔루션주식회사": {
+  "total": 154,
+  "embedded": 67
+ },
+ "현대건설 주식회사": {
+  "total": 16,
+  "embedded": 0
+ },
+ "현대로템 주식회사": {
+  "total": 180,
+  "embedded": 74
+ },
+ "현대모비스주식회사": {
+  "total": 135,
+  "embedded": 38
+ },
+ "현대오토에버(주)": {
+  "total": 765,
+  "embedded": 67
+ },
+ "현대제철 주식회사": {
+  "total": 167,
+  "embedded": 68
+ },
+ "CJ제일제당주식회사": {
+  "total": 91,
+  "embedded": 21
+ },
+ "씨제이제일제당(주)": {
+  "total": 5533,
+  "embedded": 0
+ },
+ "에이치디현대일렉트릭": {
+  "total": 154,
+  "embedded": 19
+ },
+ "에이치엠엠 주식회사": {
+  "total": 267,
+  "embedded": 95
+ },
+ "엘아이지넥스원(주)": {
+  "total": 3162,
+  "embedded": 5
+ },
+ "두산에너빌리티(주)": {
+  "total": 564,
+  "embedded": 137
+ },
+ "주식회사 엔씨소프트": {
+  "total": 225,
+  "embedded": 55
+ },
+ "에스케이텔레콤(주)": {
+  "total": 50,
+  "embedded": 36
+ },
+ "두산로보틱스주식회사": {
+  "total": 70,
+  "embedded": 27
+ },
+ "두산퓨얼셀 주식회사": {
+  "total": 107,
+  "embedded": 29
+ },
+ "(주)메리츠금융지주": {
+  "total": 457,
+  "embedded": 213
+ },
+ "미래에셋증권주식회사": {
+  "total": 8,
+  "embedded": 8
+ },
+ "삼성생명보험주식회사": {
+  "total": 1007,
+  "embedded": 274
+ },
+ "삼성에스디아이(주)": {
+  "total": 1951,
+  "embedded": 2
+ },
+ "삼성엔지니어링(주)": {
+  "total": 957,
+  "embedded": 4
+ },
+ "(주)세아베스틸지주": {
+  "total": 603,
+  "embedded": 117
+ },
+ "엘에스일렉트릭(주)": {
+  "total": 24,
+  "embedded": 15
+ },
+ "현대글로비스주식회사": {
+  "total": 17,
+  "embedded": 17
+ },
+ "현대오토에버주식회사": {
+  "total": 111,
+  "embedded": 29
+ },
+ "효성중공업 주식회사": {
+  "total": 1216,
+  "embedded": 49
+ },
+ "CJ제일제당 주식회사": {
+  "total": 26,
+  "embedded": 9
+ },
+ "제이와이피엔터테인먼트": {
+  "total": 1021,
+  "embedded": 67
+ },
+ "주식회사 KB금융지주": {
+  "total": 275,
+  "embedded": 89
+ },
+ "(주)LG에너지솔루션": {
+  "total": 493,
+  "embedded": 31
+ },
+ "(주)신한금융지주회사": {
+  "total": 34,
+  "embedded": 0
+ },
+ "(주)엘지에너지솔루션": {
+  "total": 62,
+  "embedded": 0
+ },
+ "주식회사 엘지씨엔에스": {
+  "total": 254,
+  "embedded": 29
+ },
+ "엘아이지넥스원주식회사": {
+  "total": 13,
+  "embedded": 0
+ },
+ "한국항공우주산업(주)": {
+  "total": 917,
+  "embedded": 206
+ },
+ "에스케이하이닉스(주)": {
+  "total": 393,
+  "embedded": 4
+ },
+ "포스코홀딩스 주식회사": {
+  "total": 365,
+  "embedded": 105
+ },
+ "두산로보틱스 주식회사": {
+  "total": 518,
+  "embedded": 370
+ },
+ "두산에너빌리티주식회사": {
+  "total": 175,
+  "embedded": 46
+ },
+ "주식회사 디앤디파마텍": {
+  "total": 122,
+  "embedded": 27
+ },
+ "(주)레인보우로보틱스": {
+  "total": 9,
+  "embedded": 0
+ },
+ "삼성바이오로직스(주)": {
+  "total": 670,
+  "embedded": 6
+ },
+ "삼성화재해상보험(주)": {
+  "total": 1408,
+  "embedded": 97
+ },
+ "주식회사 아모레퍼시픽": {
+  "total": 315,
+  "embedded": 108
+ },
+ "Kakao Corp.": {
+  "total": 25,
+  "embedded": 0
+ },
+ "LS ELECTRIC": {
+  "total": 7108,
+  "embedded": 363
+ },
+ "엘에스일렉트릭주식회사": {
+  "total": 3437,
+  "embedded": 62
+ },
+ "주식회사 에코프로비엠": {
+  "total": 349,
+  "embedded": 112
+ },
+ "E-MART Inc.": {
+  "total": 14,
+  "embedded": 0
+ },
+ "(주)에스엠엔터테인먼트": {
+  "total": 675,
+  "embedded": 60
+ },
+ "에스케이하이닉스주식회사": {
+  "total": 23,
+  "embedded": 0
+ },
+ "에이치디현대중공업(주)": {
+  "total": 96,
+  "embedded": 33
+ },
+ "한화에어로스페이스(주)": {
+  "total": 2697,
+  "embedded": 226
+ },
+ "엘아이지넥스원 주식회사": {
+  "total": 205,
+  "embedded": 54
+ },
+ "두산에너빌리티 주식회사": {
+  "total": 444,
+  "embedded": 332
+ },
+ "삼성바이오로직스주식회사": {
+  "total": 77,
+  "embedded": 0
+ },
+ "삼성화재해상보험주식회사": {
+  "total": 321,
+  "embedded": 100
+ },
+ "(주) 신한금융지주회사": {
+  "total": 12,
+  "embedded": 0
+ },
+ "(주)와이지엔터테인먼트": {
+  "total": 427,
+  "embedded": 200
+ },
+ "엘에스일렉트릭 주식회사": {
+  "total": 57,
+  "embedded": 4
+ },
+ "한국항공우주산업주식회사": {
+  "total": 140,
+  "embedded": 71
+ },
+ "에이치디현대일렉트릭(주)": {
+  "total": 9,
+  "embedded": 0
+ },
+ "현대일렉트릭앤에너지시스템": {
+  "total": 143,
+  "embedded": 3
+ },
+ "LG Uplus Corp": {
+  "total": 7,
+  "embedded": 0
+ },
+ "SK hynix Inc.": {
+  "total": 6,
+  "embedded": 6
+ },
+ "삼성바이오로직스 주식회사": {
+  "total": 242,
+  "embedded": 71
+ },
+ "주식회사 레인보우로보틱스": {
+  "total": 144,
+  "embedded": 33
+ },
+ "Alteogen Inc.": {
+  "total": 3,
+  "embedded": 0
+ },
+ "KRAFTON, Inc.": {
+  "total": 95,
+  "embedded": 81
+ },
+ "한화에어로스페이스주식회사": {
+  "total": 171,
+  "embedded": 62
+ },
+ "(주)제이와이피엔터테인먼트": {
+  "total": 762,
+  "embedded": 18
+ },
+ "에이치디현대중공업 주식회사": {
+  "total": 219,
+  "embedded": 54
+ },
+ "LIG디펜스앤에어로스페이스": {
+  "total": 20,
+  "embedded": 2
+ },
+ "HYBE Co., Ltd.": {
+  "total": 16,
+  "embedded": 0
+ },
+ "주식회사 에스엠엔터테인먼트": {
+  "total": 182,
+  "embedded": 45
+ },
+ "에이치디현대일렉트릭 주식회사": {
+  "total": 141,
+  "embedded": 58
+ },
+ "Celltrion, Inc.": {
+  "total": 6,
+  "embedded": 0
+ },
+ "KIA CORPORATION": {
+  "total": 19,
+  "embedded": 0
+ },
+ "현대일렉트릭앤에너지시스템(주)": {
+  "total": 9,
+  "embedded": 0
+ },
+ "LG CNS Co., Ltd.": {
+  "total": 3,
+  "embedded": 0
+ },
+ "LG H&H Co., Ltd.": {
+  "total": 16,
+  "embedded": 4
+ },
+ "HYUNDAI MOTOR CO": {
+  "total": 149,
+  "embedded": 149
+ },
+ "Rainbow Robotics": {
+  "total": 25,
+  "embedded": 0
+ },
+ "NAVER Corporation": {
+  "total": 12,
+  "embedded": 0
+ },
+ "AMOREPACIFIC CORP.": {
+  "total": 13,
+  "embedded": 0
+ },
+ "POSCO Holdings Inc.": {
+  "total": 57,
+  "embedded": 9
+ },
+ "D&D Pharmatech Inc.": {
+  "total": 4,
+  "embedded": 0
+ },
+ "엘아이지디펜스앤에어로스페이스 주식회사": {
+  "total": 8,
+  "embedded": 2
+ },
+ "Doosan Robotics Inc.": {
+  "total": 16,
+  "embedded": 0
+ },
+ "LS ELECTRIC CO., LTD": {
+  "total": 3,
+  "embedded": 0
+ },
+ "SHIFT UP Corporation.": {
+  "total": 4,
+  "embedded": 0
+ },
+ "YG Entertainment Inc.": {
+  "total": 15,
+  "embedded": 0
+ },
+ "Hanmi Pharm. Co., Ltd.": {
+  "total": 12,
+  "embedded": 0
+ },
+ "KB Financial Group Inc.": {
+  "total": 13,
+  "embedded": 13
+ },
+ "LG ENERGY SOLUTION, LTD.": {
+  "total": 8,
+  "embedded": 0
+ },
+ "PharmaResearch Co., Ltd.": {
+  "total": 31,
+  "embedded": 0
+ },
+ "OCI Holdings Company Ltd.": {
+  "total": 21,
+  "embedded": 6
+ },
+ "Hana Financial Group Inc.": {
+  "total": 9,
+  "embedded": 9
+ },
+ "Doosan Fuel Cell Co., Ltd.": {
+  "total": 6,
+  "embedded": 0
+ },
+ "SAMSUNG BIOLOGICS CO.,LTD.": {
+  "total": 13,
+  "embedded": 0
+ },
+ "SM ENTERTAINMENT CO., Ltd.": {
+  "total": 16,
+  "embedded": 0
+ },
+ "Woori Financial Group Inc.": {
+  "total": 13,
+  "embedded": 0
+ },
+ "HANWHA AEROSPACE CO., LTD.": {
+  "total": 27,
+  "embedded": 0
+ },
+ "DOOSAN ENERBILITY CO., LTD.": {
+  "total": 8,
+  "embedded": 0
+ },
+ "HANWHA SOLUTIONS CORPORATION": {
+  "total": 9,
+  "embedded": 0
+ },
+ "JYP Entertainment Corporation": {
+  "total": 11,
+  "embedded": 0
+ },
+ "LIG Defense&Aerospace Co., Ltd.": {
+  "total": 2,
+  "embedded": 0
+ },
+ "MIRAE ASSET SECURITIES CO.,LTD.": {
+  "total": 1,
+  "embedded": 0
+ },
+ "KOREA AEROSPACE INDUSTRIES, LTD.": {
+  "total": 2,
+  "embedded": 1
+ },
+ "SeAH Besteel Holdings Corporation": {
+  "total": 14,
+  "embedded": 0
+ },
+ "HD HYUNDAI HEAVY INDUSTRIES CO.,LTD.": {
+  "total": 16,
+  "embedded": 0
+ },
+ "HYUNDAI ENGINEERING & CONSTRUCTION CO.,LTD": {
+  "total": 1,
+  "embedded": 0
+ },
+ "KEPCO Engineering & Construction Company, Inc": {
+  "total": 27,
+  "embedded": 0
+ }
+}
